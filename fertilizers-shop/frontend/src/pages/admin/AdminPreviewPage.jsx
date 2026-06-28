@@ -41,7 +41,7 @@ const VIEWPORTS = [
   },
 ];
 
-const BASE = window.location.origin; // e.g. http://localhost:5173
+const BASE = window.location.origin;
 
 export default function AdminPreviewPage() {
   const [activePath, setActivePath] = useState("/");
@@ -141,7 +141,7 @@ export default function AdminPreviewPage() {
               <svg className="w-3 h-3 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span className="text-slate-500 text-xs">localhost:5173</span>
+              <span className="text-slate-500 text-xs">{BASE}</span>
               <input
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}

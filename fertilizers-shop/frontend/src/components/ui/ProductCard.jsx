@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const PHONE = import.meta.env.VITE_CONTACT_PHONE || "+91-98765-43210";
 
 const CATEGORY_COLORS = {

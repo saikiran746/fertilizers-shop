@@ -7,7 +7,7 @@ import { fetchProducts } from "../../api/products";
 import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
 /* ── tiny reusable components ───────────────────────────── */
 function InputLabel({ children }) {

@@ -5,7 +5,7 @@ import { adminFetchEnhancedStats, adminFetchProducts } from "../../api/products"
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import { useAuth } from "../../store/AuthContext";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
 function getGreeting() {
   const h = new Date().getHours();

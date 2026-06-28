@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { buildWaUrl } from "../../utils/whatsapp";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:5000";
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();

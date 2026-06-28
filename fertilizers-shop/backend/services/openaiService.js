@@ -206,7 +206,7 @@ function generateFallbackResponse(userMessage, knowledgeContext) {
      return "I am AgroPlus AI and can only assist with AgroPlus products, fertilizers, crops, soil health, farming guidance, and orders.";
   }
 
-  return \`I am AgroPlus AI. Please contact our team for assistance or ask me about our agricultural products.\`;
+  return `I am AgroPlus AI. Please contact our team for assistance or ask me about our agricultural products.`;
 }
 
 module.exports = { generateChatResponse, generateFallbackResponse };

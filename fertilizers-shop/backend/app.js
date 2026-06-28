@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
@@ -8,6 +7,8 @@ const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 const publicRoutes = require("./routes/public");
 const chatbotRoutes = require("./routes/chatbot");
+
+const prisma = require("./prismaClient");
 
 const app = express();
 
@@ -29,13 +30,12 @@ app.use("/api", publicRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 
 // Health check
-app.get("/", (req, res) => res.json({ status: "ok", message: "Fertilizers Shop API" }));
+app.get("/", (req, res) => res.json({ status: "ok", message: "Fertilizers Shop API (PostgreSQL)" }));
 
-// ── MongoDB ─────────────────────────────────────────────────────────────────
-mongoose
-  .connect(process.env.MONGO_URI || "mongodb://localhost:27017/fertilizers_shop")
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+// ── Prisma Test Connection ──────────────────────────────────────────────────
+prisma.$connect()
+  .then(() => console.log("✅ PostgreSQL connected via Prisma"))
+  .catch((err) => console.error("❌ PostgreSQL error:", err));
 
 // ── Start server ────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;

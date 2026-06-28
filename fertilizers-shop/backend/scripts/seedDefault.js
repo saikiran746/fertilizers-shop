@@ -1,18 +1,20 @@
-const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
 require("dotenv").config();
-const Admin = require("../models/Admin");
+const prisma = require("../prismaClient");
 
 async function seedDefault() {
-  await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/fertilizers_shop");
-  console.log("Connected to MongoDB");
+  console.log("Connected to PostgreSQL via Prisma");
 
-  const existing = await Admin.countDocuments();
+  const existing = await prisma.admin.count();
   if (existing > 0) {
     console.log("Admin already exists. Skipping seed.");
     process.exit(0);
   }
 
-  await Admin.create({ username: "admin", password: "admin123" });
+  const hashedPassword = await bcrypt.hash("admin123", 12);
+  await prisma.admin.create({ 
+    data: { username: "admin", password: hashedPassword } 
+  });
   console.log("✅ Default admin created — username: admin, password: admin123");
   process.exit(0);
 }

@@ -1,24 +1,23 @@
-const mongoose = require("mongoose");
 const readline = require("readline");
+const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
-const Admin = require("../models/Admin");
+const prisma = require("../prismaClient");
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = (q) => new Promise((res) => rl.question(q, res));
 
 async function seed() {
-  await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/fertilizers_shop");
-  console.log("Connected to MongoDB");
+  console.log("Connected to PostgreSQL via Prisma");
 
-  const existing = await Admin.countDocuments();
+  const existing = await prisma.admin.count();
   if (existing > 0) {
     const ans = await ask(`Admin already exists. Overwrite? (yes/no): `);
     if (ans.toLowerCase() !== "yes") {
       console.log("Aborted.");
       process.exit(0);
     }
-    await Admin.deleteMany({});
+    await prisma.admin.deleteMany({});
   }
 
   const username = await ask("Enter admin username: ");
@@ -29,7 +28,10 @@ async function seed() {
     process.exit(1);
   }
 
-  const admin = await Admin.create({ username: username.trim(), password });
+  const hashedPassword = await bcrypt.hash(password, 12);
+  const admin = await prisma.admin.create({ 
+    data: { username: username.trim(), password: hashedPassword } 
+  });
   console.log(`✅ Admin created: ${admin.username}`);
   rl.close();
   process.exit(0);

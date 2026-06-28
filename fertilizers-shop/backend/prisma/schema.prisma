@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id            String               @id @default(cuid())
+  name          String
+  description   String
+  category      String
+  image         String?
+  visible       Boolean              @default(true)
+  price         Float                @default(0)
+  benefits      String               @default("")
+  inStock       Boolean              @default(true)
+  stockQuantity Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  bookings      Booking[]
+  chatMessages  ChatMessageProduct[]
+}
+
+model Booking {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String
+  email       String?
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  productName String
+  address     String
+  lat         Float?
+  lng         Float?
+  status      String   @default("pending") // pending, confirmed, cancelled
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChatSession {
+  id            String        @id @default(cuid())
+  sessionId     String        @unique
+  totalMessages Int           @default(0)
+  lastActivity  DateTime      @default(now())
+  rating        Int?
+  comment       String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  messages      ChatMessage[]
+}
+
+model ChatMessage {
+  id             String               @id @default(cuid())
+  chatSessionId  String
+  chatSession    ChatSession          @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  role           String // user, assistant, system
+  content        String
+  timestamp      DateTime             @default(now())
+  quickAction    String?
+  feedbackRating Int?
+  products       ChatMessageProduct[]
+}
+
+model ChatMessageProduct {
+  chatMessageId String
+  productId     String
+  chatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([chatMessageId, productId])
+}
+
+model ChatbotSettings {
+  id                 String        @id @default(cuid())
+  enabled            Boolean       @default(true)
+  welcomeMessage     String        @default("\uD83D\uDC4B Welcome to AgroPlus AI!\nAsk me about fertilizers, crops, soil health, farming practices, product recommendations, and crop nutrition.")
+  systemPrompt       String        @default("")
+  modelName          String        @default("gpt-4o-mini")
+  maxTokens          Int           @default(500)
+  temperature        Float         @default(0.7)
+  totalConversations Int           @default(0)
+  totalMessages      Int           @default(0)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  quickActions       QuickAction[]
+}
+
+model QuickAction {
+  id                String          @id @default(cuid())
+  chatbotSettingsId String
+  chatbotSettings   ChatbotSettings @relation(fields: [chatbotSettingsId], references: [id], onDelete: Cascade)
+  emoji             String
+  label             String
+  prompt            String
+}
+
+model SiteSettings {
+  id                  String   @id @default(cuid())
+  phone               String   @default("+91-98765-43210")
+  whatsappNumber      String   @default("919876543210")
+  email               String   @default("info@AgroPlus.in")
+  address             String   @default("123 Agriculture Road, Hyderabad, Telangana 500001")
+  businessHours       String   @default("Mon–Sat: 9:00 AM – 6:00 PM")
+  senderEmail         String   @default("")
+  senderEmailPassword String   @default("")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}

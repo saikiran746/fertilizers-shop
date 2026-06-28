@@ -1,5 +1,6 @@
 const OpenAI = require('openai');
-const Product = require('../models/Product');
+const prisma = require('../prismaClient');
+const mapMongoId = require('../utils/mongoMapper');
 
 let openaiClient = null;
 
@@ -72,27 +73,32 @@ async function executeProductSearch(args) {
     let dbQuery = { visible: true };
 
     if (query) {
-      dbQuery.$text = { $search: query };
+      dbQuery.OR = [
+        { name: { contains: query, mode: "insensitive" } },
+        { description: { contains: query, mode: "insensitive" } },
+        { benefits: { contains: query, mode: "insensitive" } }
+      ];
     }
     
     if (maxPrice !== undefined) {
-      dbQuery.price = { $lte: maxPrice, $gt: 0 };
+      dbQuery.price = { lte: maxPrice, gt: 0 };
     }
     
     if (category) {
-      dbQuery.category = { $regex: new RegExp(category, 'i') };
+      dbQuery.category = { contains: category, mode: "insensitive" };
     }
 
-    const products = await Product.find(dbQuery)
-      .limit(5)
-      .select('_id name description category price benefits inStock image')
-      .lean();
+    const products = await prisma.product.findMany({
+      where: dbQuery,
+      take: 5,
+      select: { id: true, name: true, description: true, category: true, price: true, benefits: true, inStock: true, image: true }
+    });
 
     if (products.length === 0) {
       return { success: true, message: "No products found matching the criteria.", products: [] };
     }
 
-    return { success: true, products };
+    return { success: true, products: mapMongoId(products) };
   } catch (error) {
     console.error("Error executing product search:", error);
     return { success: false, message: "Database search failed due to an internal error." };
@@ -187,7 +193,7 @@ function generateFallbackResponse(userMessage, knowledgeContext) {
   const msg = userMessage.toLowerCase();
   
   if (msg.includes('hi') || msg.includes('hello')) {
-    return "Hello \ud83d\udc4b Welcome to AgroPlus Fertilizers. How can I help you today?";
+    return "Hello 👋 Welcome to AgroPlus Fertilizers. How can I help you today?";
   }
   
   if (msg.includes('thanks') || msg.includes('thank you')) {
@@ -200,7 +206,7 @@ function generateFallbackResponse(userMessage, knowledgeContext) {
      return "I am AgroPlus AI and can only assist with AgroPlus products, fertilizers, crops, soil health, farming guidance, and orders.";
   }
 
-  return `I am AgroPlus AI. Please contact our team for assistance or ask me about our agricultural products.`;
+  return \`I am AgroPlus AI. Please contact our team for assistance or ask me about our agricultural products.\`;
 }
 
 module.exports = { generateChatResponse, generateFallbackResponse };

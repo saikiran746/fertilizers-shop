@@ -1,11 +1,8 @@
-const Product = require('../models/Product');
-const SiteSettings = require('../models/SiteSettings');
+const prisma = require('../prismaClient');
 
 let cachedContext = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-const { CATEGORIES } = require('../models/Product');
 
 async function buildKnowledgeContext() {
   const now = Date.now();
@@ -15,25 +12,30 @@ async function buildKnowledgeContext() {
 
   try {
     // Fetch all visible products
-    const products = await Product.find({ visible: true })
-      .select('name description category')
-      .lean();
+    const products = await prisma.product.findMany({
+      where: { visible: true },
+      select: { name: true, description: true, category: true }
+    });
 
     // Fetch site settings
-    let settings = await SiteSettings.findOne().lean();
+    let settings = await prisma.siteSettings.findFirst();
     if (!settings) {
       settings = {
         phone: '+91-98765-43210',
         whatsappNumber: '919876543210',
         email: 'info@AgroPlus.in',
         address: '123 Agriculture Road, Hyderabad, Telangana 500001',
-        businessHours: 'Mon\u2013Sat: 9:00 AM \u2013 6:00 PM'
+        businessHours: 'Mon–Sat: 9:00 AM – 6:00 PM'
       };
     }
 
+    // Get distinct categories
+    const categoriesSet = new Set(products.map(p => p.category));
+    const categories = Array.from(categoriesSet);
+
     // Group products by category
     const productsByCategory = {};
-    CATEGORIES.forEach(cat => { productsByCategory[cat] = []; });
+    categories.forEach(cat => { productsByCategory[cat] = []; });
     products.forEach(p => {
       if (productsByCategory[p.category]) {
         productsByCategory[p.category].push(p);
@@ -43,12 +45,12 @@ async function buildKnowledgeContext() {
     // Build structured context
     let context = '=== AGROPLUS FERTILIZERS - PRODUCT CATALOG ===\n\n';
 
-    CATEGORIES.forEach(category => {
+    categories.forEach(category => {
       const catProducts = productsByCategory[category];
       if (catProducts.length > 0) {
         context += `\n--- ${category.toUpperCase()} ---\n`;
         catProducts.forEach(p => {
-          context += `\u2022 ${p.name}: ${p.description}\n`;
+          context += `• ${p.name}: ${p.description}\n`;
         });
       }
     });
@@ -63,8 +65,8 @@ async function buildKnowledgeContext() {
     context += `Website: This is a product catalog website. Customers can browse products and contact us via phone or WhatsApp to place orders.\n`;
 
     context += '\n=== PRODUCT CATEGORIES ===\n';
-    CATEGORIES.forEach(cat => {
-      context += `\u2022 ${cat}\n`;
+    categories.forEach(cat => {
+      context += `• ${cat}\n`;
     });
 
     context += `\nTotal Products Available: ${products.length}\n`;

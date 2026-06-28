@@ -1,16 +1,34 @@
-const ChatSession = require('../models/ChatSession');
-const ChatbotSettings = require('../models/ChatbotSettings');
+const prisma = require("../prismaClient");
+const mapMongoId = require("../utils/mongoMapper");
 
-// Helper: get or create singleton settings
+const DEFAULT_QUICK_ACTIONS = [
+  { emoji: '🌾', label: 'Best Fertilizer For Rice', prompt: 'What is the best fertilizer for rice cultivation? Please recommend products available on your website.' },
+  { emoji: '🌱', label: 'Cotton Crop Guide', prompt: 'Give me a complete fertilizer guide for cotton crop cultivation with your product recommendations.' },
+  { emoji: '🍅', label: 'Tomato Fertilizer Plan', prompt: 'What fertilizer plan do you recommend for tomato farming? Include stage-wise application.' },
+  { emoji: '📈', label: 'Increase Crop Yield', prompt: 'How can I increase my crop yield? What fertilizers and practices do you recommend?' },
+  { emoji: '🧪', label: 'Soil Health Tips', prompt: 'Give me tips to improve soil health and fertility. What products should I use?' },
+  { emoji: '⛅', label: 'Weather Farming Advice', prompt: 'How should I adjust my fertilizer application based on different weather conditions?' },
+  { emoji: '💰', label: 'Fertilizer Cost Calculator', prompt: 'I want to calculate fertilizer requirements for my farm. Please help me with the calculation.' },
+  { emoji: '📞', label: 'Contact Expert', prompt: 'I want to speak with a fertilizer expert. How can I contact your team?' }
+];
+
 async function getOrCreateSettings() {
-  let settings = await ChatbotSettings.findOne();
+  let settings = await prisma.chatbotSettings.findFirst({
+    include: { quickActions: true }
+  });
   if (!settings) {
-    settings = await ChatbotSettings.create({});
+    settings = await prisma.chatbotSettings.create({
+      data: {
+        quickActions: {
+          create: DEFAULT_QUICK_ACTIONS
+        }
+      },
+      include: { quickActions: true }
+    });
   }
   return settings;
 }
 
-// GET /api/admin/chatbot/settings
 exports.getSettings = async (req, res) => {
   try {
     const settings = await getOrCreateSettings();
@@ -21,21 +39,31 @@ exports.getSettings = async (req, res) => {
   }
 };
 
-// PUT /api/admin/chatbot/settings
 exports.updateSettings = async (req, res) => {
   try {
     const updateData = req.body;
     
-    // Validate quick actions if provided
     if (updateData.quickActions && !Array.isArray(updateData.quickActions)) {
       return res.status(400).json({ error: 'quickActions must be an array' });
     }
 
-    const settings = await ChatbotSettings.findOneAndUpdate(
-      {},
-      { $set: updateData },
-      { new: true, upsert: true }
-    );
+    const currentSettings = await getOrCreateSettings();
+    
+    let dataToUpdate = { ...updateData };
+    if (updateData.quickActions) {
+      dataToUpdate.quickActions = {
+        deleteMany: {},
+        create: updateData.quickActions.map(qa => ({ emoji: qa.emoji, label: qa.label, prompt: qa.prompt }))
+      };
+    } else {
+      delete dataToUpdate.quickActions;
+    }
+
+    const settings = await prisma.chatbotSettings.update({
+      where: { id: currentSettings.id },
+      data: dataToUpdate,
+      include: { quickActions: true }
+    });
 
     res.json({ message: 'Settings updated successfully', settings });
   } catch (error) {
@@ -44,7 +72,6 @@ exports.updateSettings = async (req, res) => {
   }
 };
 
-// GET /api/admin/chatbot/analytics
 exports.getAnalytics = async (req, res) => {
   try {
     const settings = await getOrCreateSettings();
@@ -52,54 +79,51 @@ exports.getAnalytics = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get today's sessions
-    const todaySessionsCount = await ChatSession.countDocuments({
-      createdAt: { $gte: today }
+    const todaySessionsCount = await prisma.chatSession.count({
+      where: { createdAt: { gte: today } }
     });
 
-    // Get average messages per session
-    const avgMessagesResult = await ChatSession.aggregate([
-      { $group: { _id: null, avgMsg: { $avg: '$totalMessages' } } }
-    ]);
-    const avgMessages = avgMessagesResult[0]?.avgMsg ? Math.round(avgMessagesResult[0].avgMsg) : 0;
+    const avgMessagesResult = await prisma.chatSession.aggregate({
+      _avg: { totalMessages: true }
+    });
+    const avgMessages = avgMessagesResult._avg.totalMessages ? Math.round(avgMessagesResult._avg.totalMessages) : 0;
 
-    // Get user satisfaction
-    const satisfactionResult = await ChatSession.aggregate([
-      { $match: { 'userFeedback.rating': { $ne: null } } },
-      { $group: { 
-          _id: null, 
-          avgRating: { $avg: '$userFeedback.rating' },
-          count: { $sum: 1 }
-      }}
-    ]);
+    const satisfactionResult = await prisma.chatSession.aggregate({
+      where: { rating: { not: null } },
+      _avg: { rating: true },
+      _count: { rating: true }
+    });
     const satisfaction = {
-      average: satisfactionResult[0]?.avgRating ? Number(satisfactionResult[0].avgRating.toFixed(1)) : 0,
-      totalFeedback: satisfactionResult[0]?.count || 0
+      average: satisfactionResult._avg.rating ? Number(satisfactionResult._avg.rating.toFixed(1)) : 0,
+      totalFeedback: satisfactionResult._count.rating || 0
     };
 
-    // Get top quick actions
-    const quickActionsResult = await ChatSession.aggregate([
-      { $unwind: '$messages' },
-      { $match: { 'messages.metadata.quickAction': { $ne: null } } },
-      { $group: { _id: '$messages.metadata.quickAction', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 5 }
-    ]);
+    const quickActionsResult = await prisma.chatMessage.groupBy({
+      by: ['quickAction'],
+      where: { quickAction: { not: null } },
+      _count: { quickAction: true },
+      orderBy: { _count: { quickAction: 'desc' } },
+      take: 5
+    });
 
-    // Get daily conversations for the last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const dailyConversations = await ChatSession.aggregate([
-      { $match: { createdAt: { $gte: thirtyDaysAgo } } },
-      { 
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
+    const recentSessions = await prisma.chatSession.findMany({
+      where: { createdAt: { gte: thirtyDaysAgo } },
+      select: { createdAt: true }
+    });
+
+    const dailyMap = {};
+    recentSessions.forEach(session => {
+      const dateStr = session.createdAt.toISOString().split('T')[0];
+      dailyMap[dateStr] = (dailyMap[dateStr] || 0) + 1;
+    });
+
+    const dailyConversations = Object.keys(dailyMap).sort().map(dateStr => ({
+      _id: dateStr,
+      count: dailyMap[dateStr]
+    }));
 
     res.json({
       totalConversations: settings.totalConversations,
@@ -107,44 +131,47 @@ exports.getAnalytics = async (req, res) => {
       todayConversations: todaySessionsCount,
       averageMessages: avgMessages,
       satisfaction,
-      topQuickActions: quickActionsResult.map(r => ({ label: r._id, count: r.count })),
+      topQuickActions: quickActionsResult.map(r => ({ label: r.quickAction, count: r._count.quickAction })),
       dailyConversations
     });
-
   } catch (error) {
     console.error('Error fetching chatbot analytics:', error);
     res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 };
 
-// GET /api/admin/chatbot/conversations
 exports.getConversations = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const query = {};
+    const total = await prisma.chatSession.count();
+    const conversations = await prisma.chatSession.findMany({
+      orderBy: { lastActivity: 'desc' },
+      skip,
+      take: limit,
+      include: {
+        messages: {
+          where: { role: 'user' },
+          orderBy: { timestamp: 'asc' },
+          take: 1
+        }
+      }
+    });
 
-    const total = await ChatSession.countDocuments(query);
-    const conversations = await ChatSession.find(query)
-      .select('sessionId totalMessages lastActivity userFeedback createdAt messages')
-      .sort({ lastActivity: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    // Map to include a preview of the first message
     const formattedConversations = conversations.map(conv => {
-      const firstUserMsg = conv.messages.find(m => m.role === 'user');
       return {
-        _id: conv._id,
+        _id: conv.id,
         sessionId: conv.sessionId,
         totalMessages: conv.totalMessages,
         lastActivity: conv.lastActivity,
         createdAt: conv.createdAt,
-        userFeedback: conv.userFeedback,
-        preview: firstUserMsg ? firstUserMsg.content : 'No user messages'
+        userFeedback: {
+          rating: conv.rating,
+          comment: conv.comment
+        },
+        preview: conv.messages.length > 0 ? conv.messages[0].content : 'No user messages'
       };
     });
 
@@ -160,27 +187,35 @@ exports.getConversations = async (req, res) => {
   }
 };
 
-// GET /api/admin/chatbot/conversations/:id
 exports.getConversation = async (req, res) => {
   try {
-    const session = await ChatSession.findById(req.params.id);
+    const session = await prisma.chatSession.findUnique({
+      where: { id: req.params.id },
+      include: { messages: { orderBy: { timestamp: 'asc' } } }
+    });
     if (!session) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
-    res.json(session);
+    const formattedSession = {
+      ...session,
+      _id: session.id,
+      userFeedback: {
+        rating: session.rating,
+        comment: session.comment
+      }
+    };
+    res.json(formattedSession);
   } catch (error) {
     console.error('Error fetching conversation:', error);
     res.status(500).json({ error: 'Failed to fetch conversation' });
   }
 };
 
-// DELETE /api/admin/chatbot/conversations/:id
 exports.deleteConversation = async (req, res) => {
   try {
-    const session = await ChatSession.findByIdAndDelete(req.params.id);
-    if (!session) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
+    const session = await prisma.chatSession.delete({
+      where: { id: req.params.id }
+    });
     res.json({ message: 'Conversation deleted successfully' });
   } catch (error) {
     console.error('Error deleting conversation:', error);
@@ -188,14 +223,14 @@ exports.deleteConversation = async (req, res) => {
   }
 };
 
-// DELETE /api/admin/chatbot/conversations
 exports.clearConversations = async (req, res) => {
   try {
-    await ChatSession.deleteMany({});
+    await prisma.chatSession.deleteMany({});
     
-    // Reset counters in settings
-    await ChatbotSettings.findOneAndUpdate({}, { 
-      $set: { totalConversations: 0, totalMessages: 0 } 
+    const currentSettings = await getOrCreateSettings();
+    await prisma.chatbotSettings.update({
+      where: { id: currentSettings.id },
+      data: { totalConversations: 0, totalMessages: 0 }
     });
 
     res.json({ message: 'All conversations cleared successfully' });

@@ -1,18 +1,35 @@
-const ChatSession = require('../models/ChatSession');
-const ChatbotSettings = require('../models/ChatbotSettings');
+const prisma = require('../prismaClient');
 const { buildKnowledgeContext } = require('../services/knowledgeBase');
 const { generateChatResponse } = require('../services/openaiService');
 
-// Helper: get or create singleton settings
+const DEFAULT_QUICK_ACTIONS = [
+  { emoji: '🌾', label: 'Best Fertilizer For Rice', prompt: 'What is the best fertilizer for rice cultivation? Please recommend products available on your website.' },
+  { emoji: '🌱', label: 'Cotton Crop Guide', prompt: 'Give me a complete fertilizer guide for cotton crop cultivation with your product recommendations.' },
+  { emoji: '🍅', label: 'Tomato Fertilizer Plan', prompt: 'What fertilizer plan do you recommend for tomato farming? Include stage-wise application.' },
+  { emoji: '📈', label: 'Increase Crop Yield', prompt: 'How can I increase my crop yield? What fertilizers and practices do you recommend?' },
+  { emoji: '🧪', label: 'Soil Health Tips', prompt: 'Give me tips to improve soil health and fertility. What products should I use?' },
+  { emoji: '⛅', label: 'Weather Farming Advice', prompt: 'How should I adjust my fertilizer application based on different weather conditions?' },
+  { emoji: '💰', label: 'Fertilizer Cost Calculator', prompt: 'I want to calculate fertilizer requirements for my farm. Please help me with the calculation.' },
+  { emoji: '📞', label: 'Contact Expert', prompt: 'I want to speak with a fertilizer expert. How can I contact your team?' }
+];
+
 async function getOrCreateSettings() {
-  let settings = await ChatbotSettings.findOne();
+  let settings = await prisma.chatbotSettings.findFirst({
+    include: { quickActions: true }
+  });
   if (!settings) {
-    settings = await ChatbotSettings.create({});
+    settings = await prisma.chatbotSettings.create({
+      data: {
+        quickActions: {
+          create: DEFAULT_QUICK_ACTIONS
+        }
+      },
+      include: { quickActions: true }
+    });
   }
   return settings;
 }
 
-// GET /api/chatbot/settings (public)
 exports.getSettings = async (req, res) => {
   try {
     const settings = await getOrCreateSettings();
@@ -27,7 +44,6 @@ exports.getSettings = async (req, res) => {
   }
 };
 
-// POST /api/chatbot/message (public)
 exports.sendMessage = async (req, res) => {
   try {
     const { sessionId, message, history } = req.body;
@@ -36,83 +52,92 @@ exports.sendMessage = async (req, res) => {
       return res.status(400).json({ error: 'sessionId and message are required' });
     }
 
-    // Check if chatbot is enabled
     const settings = await getOrCreateSettings();
     if (!settings.enabled) {
       return res.status(503).json({ error: 'Chatbot is currently offline. Please contact us via phone or WhatsApp.' });
     }
 
-    // Find or create session
-    let session = await ChatSession.findOne({ sessionId });
+    let session = await prisma.chatSession.findUnique({ 
+      where: { sessionId },
+      include: { messages: true }
+    });
     const isNewSession = !session;
 
     if (!session) {
-      session = new ChatSession({
-        sessionId,
-        messages: [],
-        ipAddress: req.ip || req.connection?.remoteAddress,
-        userAgent: req.get('User-Agent') || null
+      session = await prisma.chatSession.create({
+        data: {
+          sessionId,
+          ipAddress: req.ip || req.connection?.remoteAddress,
+          userAgent: req.get('User-Agent') || null
+        },
+        include: { messages: true }
       });
     }
 
-    // Add user message
-    const userMsg = {
-      role: 'user',
-      content: message,
-      timestamp: new Date(),
-      metadata: {}
-    };
-
-    // Check if this came from a quick action
     const matchingAction = settings.quickActions.find(qa => qa.prompt === message);
-    if (matchingAction) {
-      userMsg.metadata.quickAction = matchingAction.label;
-    }
+    
+    await prisma.chatMessage.create({
+      data: {
+        chatSessionId: session.id,
+        role: 'user',
+        content: message,
+        quickAction: matchingAction ? matchingAction.label : null
+      }
+    });
 
-    session.messages.push(userMsg);
+    const refreshedSession = await prisma.chatSession.findUnique({
+      where: { id: session.id },
+      include: { messages: { orderBy: { timestamp: 'asc' } } }
+    });
 
-    // Build message history for AI (last 10 messages)
-    const messageHistory = session.messages.slice(-10).map(m => ({
+    const messageHistory = refreshedSession.messages.slice(-10).map(m => ({
       role: m.role,
       content: m.content
     }));
 
-    // Build knowledge context
     const knowledgeContext = await buildKnowledgeContext();
-
-    // Generate AI response
     const { reply, metadata } = await generateChatResponse(messageHistory, settings, knowledgeContext);
 
-    // Add assistant message
-    const assistantMsg = {
-      role: 'assistant',
-      content: reply,
-      timestamp: new Date(),
-      metadata: metadata || {}
-    };
-    session.messages.push(assistantMsg);
+    const productConnections = metadata?.productsReferenced?.map(id => ({
+      product: { connect: { id } }
+    })) || [];
 
-    // Update counters
-    session.totalMessages = session.messages.filter(m => m.role !== 'system').length;
-    session.lastActivity = new Date();
+    await prisma.chatMessage.create({
+      data: {
+        chatSessionId: session.id,
+        role: 'assistant',
+        content: reply,
+        products: {
+          create: productConnections
+        }
+      }
+    });
 
-    await session.save();
+    const finalMessagesCount = await prisma.chatMessage.count({
+      where: { chatSessionId: session.id, role: { not: 'system' } }
+    });
 
-    // Update global counters
+    await prisma.chatSession.update({
+      where: { id: session.id },
+      data: {
+        totalMessages: finalMessagesCount,
+        lastActivity: new Date()
+      }
+    });
+
     if (isNewSession) {
-      await ChatbotSettings.findOneAndUpdate({}, { $inc: { totalConversations: 1, totalMessages: 2 } });
+      await prisma.chatbotSettings.updateMany({ data: { totalConversations: { increment: 1 }, totalMessages: { increment: 2 } } });
     } else {
-      await ChatbotSettings.findOneAndUpdate({}, { $inc: { totalMessages: 2 } });
+      await prisma.chatbotSettings.updateMany({ data: { totalMessages: { increment: 2 } } });
     }
 
-    res.json({ reply, metadata, sessionId });
+    res.json({ reply, metadata: metadata || {}, sessionId });
   } catch (error) {
     console.error('Error sending chatbot message:', error);
     res.status(500).json({ error: 'Failed to process message. Please try again.' });
   }
 };
 
-// POST /api/chatbot/feedback (public)
 exports.submitFeedback = async (req, res) => {
   try {
     const { sessionId, rating, comment } = req.body;
@@ -121,16 +146,18 @@ exports.submitFeedback = async (req, res) => {
       return res.status(400).json({ error: 'sessionId is required' });
     }
 
-    const session = await ChatSession.findOne({ sessionId });
+    const session = await prisma.chatSession.findUnique({ where: { sessionId } });
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    session.userFeedback = {
-      rating: rating || null,
-      comment: comment || null
-    };
-    await session.save();
+    await prisma.chatSession.update({
+      where: { id: session.id },
+      data: {
+        rating: rating || null,
+        comment: comment || null
+      }
+    });
 
     res.json({ message: 'Feedback submitted successfully' });
   } catch (error) {
@@ -139,24 +166,34 @@ exports.submitFeedback = async (req, res) => {
   }
 };
 
-// GET /api/chatbot/history/:sessionId (public)
 exports.getHistory = async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const session = await ChatSession.findOne({ sessionId });
+    const session = await prisma.chatSession.findUnique({ 
+      where: { sessionId },
+      include: {
+        messages: {
+          where: { role: { not: 'system' } },
+          orderBy: { timestamp: 'asc' },
+          include: { products: true }
+        }
+      }
+    });
 
     if (!session) {
       return res.json({ messages: [] });
     }
 
-    const messages = session.messages
-      .filter(m => m.role !== 'system')
-      .map(m => ({
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp,
-        metadata: m.metadata
-      }));
+    const messages = session.messages.map(m => ({
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp,
+      metadata: {
+        quickAction: m.quickAction,
+        feedbackRating: m.feedbackRating,
+        productsReferenced: m.products.map(p => p.productId)
+      }
+    }));
 
     res.json({ messages });
   } catch (error) {

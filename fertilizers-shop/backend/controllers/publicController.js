@@ -1,29 +1,37 @@
-const Product = require("../models/Product");
+const prisma = require("../prismaClient");
+const mapMongoId = require("../utils/mongoMapper");
 
 exports.getProducts = async (req, res) => {
   try {
     const { category, search, page = 1, limit = 12 } = req.query;
+    
     const query = { visible: true };
-
     if (category) query.category = category;
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
+      query.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
       ];
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
+    const skip = (parseInt(page) - 1) * take;
+
     const [products, total] = await Promise.all([
-      Product.find(query).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit)),
-      Product.countDocuments(query),
+      prisma.product.findMany({
+        where: query,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+      }),
+      prisma.product.count({ where: query }),
     ]);
 
     res.json({
-      products,
+      products: mapMongoId(products),
       total,
       page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)),
+      pages: Math.ceil(total / take),
     });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -32,9 +40,14 @@ exports.getProducts = async (req, res) => {
 
 exports.getProduct = async (req, res) => {
   try {
-    const product = await Product.findOne({ _id: req.params.id, visible: true });
+    const product = await prisma.product.findFirst({
+      where: { 
+        id: req.params.id, 
+        visible: true 
+      }
+    });
     if (!product) return res.status(404).json({ error: "Product not found" });
-    res.json(product);
+    res.json(mapMongoId(product));
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -42,7 +55,12 @@ exports.getProduct = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
-    const categories = await Product.distinct("category", { visible: true });
+    const distinctCategories = await prisma.product.findMany({
+      where: { visible: true },
+      select: { category: true },
+      distinct: ['category'],
+    });
+    const categories = distinctCategories.map(c => c.category);
     res.json(categories);
   } catch (err) {
     res.status(500).json({ error: "Server error" });

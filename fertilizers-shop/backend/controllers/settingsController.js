@@ -1,10 +1,12 @@
-const SiteSettings = require("../models/SiteSettings");
+const prisma = require("../prismaClient");
 const nodemailer = require("nodemailer");
 
 // Helper: ensure a single settings doc always exists
 async function getOrCreate() {
-  let s = await SiteSettings.findOne();
-  if (!s) s = await SiteSettings.create({});
+  let s = await prisma.siteSettings.findFirst();
+  if (!s) {
+    s = await prisma.siteSettings.create({ data: {} });
+  }
   return s;
 }
 
@@ -29,7 +31,8 @@ exports.getAdminSettings = async (req, res) => {
   try {
     const s = await getOrCreate();
     res.json({
-      _id: s._id,
+      _id: s.id, // For backward compatibility with frontend
+      id: s.id,
       phone: s.phone,
       whatsappNumber: s.whatsappNumber,
       email: s.email,
@@ -50,19 +53,25 @@ exports.updateSettings = async (req, res) => {
   try {
     const { phone, whatsappNumber, email, address, businessHours, senderEmail, senderEmailPassword } = req.body;
     const s = await getOrCreate();
-
-    if (phone !== undefined) s.phone = phone;
-    if (whatsappNumber !== undefined) s.whatsappNumber = whatsappNumber.replace(/\D/g, ""); // digits only
-    if (email !== undefined) s.email = email;
-    if (address !== undefined) s.address = address;
-    if (businessHours !== undefined) s.businessHours = businessHours;
-    if (senderEmail !== undefined) s.senderEmail = senderEmail.trim().toLowerCase();
+    
+    let updateData = {};
+    if (phone !== undefined) updateData.phone = phone;
+    if (whatsappNumber !== undefined) updateData.whatsappNumber = whatsappNumber.replace(/\D/g, ""); // digits only
+    if (email !== undefined) updateData.email = email;
+    if (address !== undefined) updateData.address = address;
+    if (businessHours !== undefined) updateData.businessHours = businessHours;
+    if (senderEmail !== undefined) updateData.senderEmail = senderEmail.trim().toLowerCase();
+    
     // Strip ALL spaces/dashes — Google shows App Passwords as "xxxx xxxx xxxx xxxx"
     if (senderEmailPassword !== undefined && senderEmailPassword !== "••••••••") {
-      s.senderEmailPassword = senderEmailPassword.replace(/[\s\-]/g, "");
+      updateData.senderEmailPassword = senderEmailPassword.replace(/[\s\-]/g, "");
     }
 
-    await s.save();
+    await prisma.siteSettings.update({
+      where: { id: s.id },
+      data: updateData
+    });
+    
     res.json({ success: true, message: "Settings saved" });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -98,4 +107,3 @@ exports.testEmailConnection = async (req, res) => {
     res.status(400).json({ error: errMsg });
   }
 };
-

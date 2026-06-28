@@ -1,5 +1,16 @@
-const Booking = require("../models/Booking");
-const Product = require("../models/Product");
+const prisma = require("../prismaClient");
+const mapMongoId = require("../utils/mongoMapper");
+
+function mapBooking(b) {
+  if (!b) return b;
+  const mapped = mapMongoId(b);
+  if (mapped.lat !== undefined && mapped.lng !== undefined) {
+    mapped.location = { lat: mapped.lat, lng: mapped.lng };
+    delete mapped.lat;
+    delete mapped.lng;
+  }
+  return mapped;
+}
 
 // ── Create booking & decrement stock ────────────────────────────────
 exports.createBooking = async (req, res) => {
@@ -10,35 +21,37 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const product = await Product.findById(productId);
+    const product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // Warn if out of stock but still allow booking (admin can manage)
     const hadStock = product.stockQuantity > 0;
-
-    // Decrement stock by 1 (floor at 0, never go negative)
     if (hadStock) {
-      product.stockQuantity = Math.max(0, product.stockQuantity - 1);
-      // Auto-mark inStock=false if stock hits 0
-      if (product.stockQuantity === 0) {
-        product.inStock = false;
-      }
-      await product.save();
+      const newQuantity = Math.max(0, product.stockQuantity - 1);
+      await prisma.product.update({
+        where: { id: productId },
+        data: {
+          stockQuantity: newQuantity,
+          inStock: newQuantity > 0,
+        }
+      });
     }
 
-    const booking = await Booking.create({
-      name,
-      phone,
-      email,
-      productId,
-      productName: product.name,
-      address,
-      location,
+    const booking = await prisma.booking.create({
+      data: {
+        name,
+        phone,
+        email,
+        productId,
+        productName: product.name,
+        address,
+        lat: location?.lat,
+        lng: location?.lng,
+      }
     });
 
-    res.status(201).json(booking);
+    res.status(201).json(mapBooking(booking));
   } catch (err) {
     console.error("createBooking error:", err);
     res.status(500).json({ error: "Server error" });
@@ -48,8 +61,10 @@ exports.createBooking = async (req, res) => {
 // ── Get all bookings ─────────────────────────────────────────────────
 exports.getBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find().sort({ createdAt: -1 });
-    res.json(bookings);
+    const bookings = await prisma.booking.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(bookings.map(mapBooking));
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -58,8 +73,11 @@ exports.getBookings = async (req, res) => {
 // ── Get recent 5 bookings (for dashboard) ───────────────────────────
 exports.getRecentBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find().sort({ createdAt: -1 }).limit(5);
-    res.json(bookings);
+    const bookings = await prisma.booking.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5
+    });
+    res.json(bookings.map(mapBooking));
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -68,11 +86,14 @@ exports.getRecentBookings = async (req, res) => {
 // ── Mark booking as read ─────────────────────────────────────────────
 exports.markBookingRead = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
     if (!booking) return res.status(404).json({ error: "Booking not found" });
-    booking.read = true;
-    await booking.save();
-    res.json(booking);
+    
+    const updated = await prisma.booking.update({
+      where: { id: req.params.id },
+      data: { read: true }
+    });
+    res.json(mapBooking(updated));
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -82,32 +103,40 @@ exports.markBookingRead = async (req, res) => {
 exports.updateBookingStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const booking = await Booking.findById(req.params.id);
+    let booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
     if (!booking) return res.status(404).json({ error: "Booking not found" });
 
     const prevStatus = booking.status;
-    booking.status = status;
-    await booking.save();
+    booking = await prisma.booking.update({
+      where: { id: req.params.id },
+      data: { status }
+    });
 
-    // Restore stock when admin cancels a previously pending/confirmed booking
     if (status === "cancelled" && prevStatus !== "cancelled") {
-      await Product.findByIdAndUpdate(booking.productId, {
-        $inc: { stockQuantity: 1 },
-        $set: { inStock: true },
+      await prisma.product.update({
+        where: { id: booking.productId },
+        data: {
+          stockQuantity: { increment: 1 },
+          inStock: true
+        }
       });
     }
 
-    // Re-decrement if admin un-cancels (confirmed/pending) a previously cancelled booking
     if (prevStatus === "cancelled" && status !== "cancelled") {
-      const product = await Product.findById(booking.productId);
+      const product = await prisma.product.findUnique({ where: { id: booking.productId } });
       if (product && product.stockQuantity > 0) {
-        product.stockQuantity = Math.max(0, product.stockQuantity - 1);
-        if (product.stockQuantity === 0) product.inStock = false;
-        await product.save();
+        const newQuantity = Math.max(0, product.stockQuantity - 1);
+        await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            stockQuantity: newQuantity,
+            inStock: newQuantity > 0
+          }
+        });
       }
     }
 
-    res.json(booking);
+    res.json(mapBooking(booking));
   } catch (err) {
     console.error("updateBookingStatus error:", err);
     res.status(500).json({ error: "Server error" });
@@ -117,18 +146,20 @@ exports.updateBookingStatus = async (req, res) => {
 // ── Delete booking & restore stock ───────────────────────────────────
 exports.deleteBooking = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
     if (!booking) return res.status(404).json({ error: "Booking not found" });
 
-    // Restore stock only if the booking wasn't already cancelled
     if (booking.status !== "cancelled") {
-      await Product.findByIdAndUpdate(booking.productId, {
-        $inc: { stockQuantity: 1 },
-        $set: { inStock: true },
+      await prisma.product.update({
+        where: { id: booking.productId },
+        data: {
+          stockQuantity: { increment: 1 },
+          inStock: true
+        }
       });
     }
 
-    await Booking.findByIdAndDelete(req.params.id);
+    await prisma.booking.delete({ where: { id: req.params.id } });
     res.json({ message: "Booking deleted and stock restored" });
   } catch (err) {
     console.error("deleteBooking error:", err);

@@ -1,6 +1,6 @@
-const Message = require("../models/Message");
-const SiteSettings = require("../models/SiteSettings");
+const prisma = require("../prismaClient");
 const nodemailer = require("nodemailer");
+const mapMongoId = require("../utils/mongoMapper");
 
 // POST /api/contact  (public — client submits message)
 exports.submitMessage = async (req, res) => {
@@ -9,8 +9,10 @@ exports.submitMessage = async (req, res) => {
     if (!name || !email || !phone || !message) {
       return res.status(400).json({ error: "All fields are required" });
     }
-    const msg = await Message.create({ name, email, phone, message });
-    res.status(201).json({ success: true, id: msg._id });
+    const msg = await prisma.message.create({ 
+      data: { name, email, phone, message } 
+    });
+    res.status(201).json({ success: true, id: msg.id, _id: msg.id });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -19,8 +21,10 @@ exports.submitMessage = async (req, res) => {
 // GET /api/admin/messages  (admin — list all, newest first)
 exports.getMessages = async (req, res) => {
   try {
-    const messages = await Message.find().sort({ createdAt: -1 });
-    res.json(messages);
+    const messages = await prisma.message.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(mapMongoId(messages));
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -29,7 +33,7 @@ exports.getMessages = async (req, res) => {
 // GET /api/admin/messages/unread-count
 exports.getUnreadCount = async (req, res) => {
   try {
-    const count = await Message.countDocuments({ isRead: false });
+    const count = await prisma.message.count({ where: { isRead: false } });
     res.json({ count });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -39,10 +43,16 @@ exports.getUnreadCount = async (req, res) => {
 // PATCH /api/admin/messages/:id/read
 exports.markRead = async (req, res) => {
   try {
-    const msg = await Message.findByIdAndUpdate(req.params.id, { isRead: true }, { new: true });
-    if (!msg) return res.status(404).json({ error: "Message not found" });
-    res.json(msg);
+    const msg = await prisma.message.update({ 
+      where: { id: req.params.id },
+      data: { isRead: true }
+    });
+    res.json(mapMongoId(msg));
   } catch (err) {
+    // If not found, Prisma throws an error (P2025). Catch it manually or send 404
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: "Message not found" });
+    }
     res.status(500).json({ error: "Server error" });
   }
 };
@@ -50,7 +60,10 @@ exports.markRead = async (req, res) => {
 // PATCH /api/admin/messages/mark-all-read
 exports.markAllRead = async (req, res) => {
   try {
-    await Message.updateMany({ isRead: false }, { isRead: true });
+    await prisma.message.updateMany({ 
+      where: { isRead: false },
+      data: { isRead: true } 
+    });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -60,7 +73,7 @@ exports.markAllRead = async (req, res) => {
 // DELETE /api/admin/messages/:id
 exports.deleteMessage = async (req, res) => {
   try {
-    await Message.findByIdAndDelete(req.params.id);
+    await prisma.message.delete({ where: { id: req.params.id } });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -70,7 +83,7 @@ exports.deleteMessage = async (req, res) => {
 // DELETE /api/admin/messages  (delete ALL)
 exports.deleteAllMessages = async (req, res) => {
   try {
-    await Message.deleteMany({});
+    await prisma.message.deleteMany({});
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
@@ -81,10 +94,10 @@ exports.deleteAllMessages = async (req, res) => {
 exports.sendEmailReply = async (req, res) => {
   try {
     const { subject, body } = req.body;
-    const msg = await Message.findById(req.params.id);
+    const msg = await prisma.message.findUnique({ where: { id: req.params.id } });
     if (!msg) return res.status(404).json({ error: "Message not found" });
 
-    const settings = await SiteSettings.findOne();
+    const settings = await prisma.siteSettings.findFirst();
     if (!settings?.senderEmail || !settings?.senderEmailPassword) {
       return res.status(400).json({
         error: "Email not configured. Please set Gmail address and App Password in Admin Settings.",
@@ -139,7 +152,10 @@ exports.sendEmailReply = async (req, res) => {
     });
 
     // Mark as read when replied
-    await Message.findByIdAndUpdate(req.params.id, { isRead: true });
+    await prisma.message.update({ 
+      where: { id: req.params.id }, 
+      data: { isRead: true } 
+    });
 
     res.json({ success: true, message: `Email sent to ${msg.email}` });
   } catch (err) {
@@ -158,4 +174,3 @@ exports.sendEmailReply = async (req, res) => {
     res.status(500).json({ error: errMsg });
   }
 };
-

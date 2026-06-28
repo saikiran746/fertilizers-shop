@@ -105,7 +105,7 @@ export default function Footer() {
           <p>© {new Date().getFullYear()} AgroPlus Fertilizers. All rights reserved.</p>
           <p>Empowering farmers with premium crop nutrition.</p>
           {/* Hidden admin link */}
-          <Link to="/admin/login" className="text-green-900 hover:text-green-600 text-xs transition-colors opacity-30 hover:opacity-70">
+          <Link to="/admin/login" className="text-green-500 hover:text-white text-xs transition-colors">
             ⚙ Admin
           </Link>
         </div>

@@ -12,7 +12,7 @@ A professional, production-ready fertilizers shop website with a public product 
 |---|---|
 | Frontend | React 18 + Vite + Tailwind CSS + Framer Motion |
 | Backend | Node.js + Express.js |
-| Database | MongoDB + Mongoose |
+| Database | Neon PostgreSQL + Prisma ORM |
 | Auth | JWT (admin only) |
 | Image Upload | Multer |
 
@@ -22,10 +22,10 @@ A professional, production-ready fertilizers shop website with a public product 
 
 ```
 fertilizers-shop/
-├── backend/           Express API + MongoDB
+├── backend/           Express API + PostgreSQL (Prisma)
 │   ├── controllers/
 │   ├── middleware/
-│   ├── models/
+│   ├── prisma/        Database schema and config
 │   ├── routes/
 │   ├── scripts/       Admin seed script
 │   └── uploads/       Product images (auto-created)
@@ -43,7 +43,7 @@ fertilizers-shop/
 ## Prerequisites
 
 - Node.js v18+
-- MongoDB (local or Atlas)
+- PostgreSQL Database (e.g., Neon)
 - npm v9+
 
 ---
@@ -68,17 +68,21 @@ Edit `backend/.env`:
 
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/fertilizers_shop
+DATABASE_URL=postgresql://username:password@hostname:5432/dbname?sslmode=require
 JWT_SECRET=your_super_secret_key_min_32_chars
 JWT_EXPIRES_IN=8h
 FRONTEND_ORIGIN=http://localhost:5173
 UPLOAD_DIR=./uploads
+OPENAI_API_KEY=your_openai_api_key
 ```
 
-Create admin account (interactive):
+Sync database schema and create admin account:
 
 ```bash
-npm run seed
+npx prisma generate
+npx prisma db push
+node scripts/seedDefault.js
+node scripts/seedChatbotSettings.js
 ```
 
 Start backend:
@@ -103,7 +107,7 @@ cp .env.example .env
 Edit `frontend/.env`:
 
 ```env
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5000/api
 VITE_SERVER_URL=http://localhost:5000
 VITE_CONTACT_PHONE=+91-98765-43210
 VITE_CONTACT_EMAIL=info@fertilizersshop.com
@@ -184,20 +188,21 @@ GET    /api/admin/stats
 cd frontend && npm run build
 ```
 
-Serve the `dist/` folder via Nginx, Vercel, or Netlify.
+Serve the `dist/` folder via Nginx, Vercel, or Netlify. Make sure to set `VITE_API_URL` to your production backend URL.
 
-### Backend (VPS / Ubuntu)
+### Backend (Render / VPS)
 
 ```bash
-npm install -g pm2
 cd backend
-pm2 start app.js --name fertilizers-api
-pm2 save && pm2 startup
+npm install
+npx prisma generate
+npx prisma db push
+npm start
 ```
 
-### MongoDB Atlas
+### PostgreSQL Database (Neon)
 
-Replace `MONGO_URI` in `.env` with your Atlas connection string.
+Replace `DATABASE_URL` in `.env` with your Neon connection string.
 
 ---
 
@@ -207,7 +212,7 @@ Replace `MONGO_URI` in `.env` with your Atlas connection string.
 - [ ] Replace placeholder Google Maps URL in `ContactPage.jsx`
 - [ ] Customise testimonials text in `HomePage.jsx`
 - [ ] Set a strong `JWT_SECRET` (32+ random characters)
-- [ ] Run `npm run seed` to create admin credentials
+- [ ] Run `node scripts/seedDefault.js` to create admin credentials
 - [ ] Add real product images via the admin panel
 
 ---

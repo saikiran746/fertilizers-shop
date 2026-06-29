@@ -309,7 +309,7 @@ export default function BookingPage() {
                           )}
                           <div className="min-w-0 flex-1">
                             <p className="text-white font-bold text-sm leading-tight truncate">{item.name}</p>
-                            <p className="text-emerald-300 text-xs mt-0.5">${item.price}</p>
+                            <p className="text-emerald-300 text-xs mt-0.5">₹{item.price * item.quantity}</p>
                           </div>
                           
                           {/* Quantity Controls */}
@@ -324,6 +324,17 @@ export default function BookingPage() {
                   ) : (
                     <div className="mb-4 p-3 rounded-xl border-2 border-dashed border-white/20 text-center">
                       <p className="text-emerald-300/60 text-xs">No product selected</p>
+                    </div>
+                  )}
+                  {Object.keys(cart).length > 0 && (
+                    <div className="mb-4 p-3 rounded-xl bg-white/10 flex justify-between items-center">
+                      <span className="text-white font-semibold text-sm">Total Amount</span>
+                      <span className="text-emerald-300 font-bold text-lg">
+                        ₹{Object.keys(cart).reduce((sum, id) => {
+                          const p = products.find(p => p._id === id);
+                          return sum + (p ? p.price * cart[id] : 0);
+                        }, 0)}
+                      </span>
                     </div>
                   )}
                 </AnimatePresence>

@@ -42,13 +42,29 @@ exports.createBooking = async (req, res) => {
       const hadStock = product.stockQuantity > 0;
       if (hadStock) {
         const newQuantity = Math.max(0, product.stockQuantity - quantity);
+        const isOutOfStock = newQuantity <= 0;
+        
         await prisma.product.update({
           where: { id: productId },
           data: {
             stockQuantity: newQuantity,
-            inStock: newQuantity > 0,
+            inStock: !isOutOfStock,
+            visible: isOutOfStock ? false : product.visible, // auto hide if out of stock
           }
         });
+
+        if (isOutOfStock) {
+          // Create a system notification message
+          await prisma.message.create({
+            data: {
+              name: "System Alert",
+              email: "system@agroplus.com",
+              phone: "N/A",
+              message: `The product "${product.name}" is now out of stock and has been automatically hidden from clients.`,
+              isRead: false
+            }
+          });
+        }
       }
     }
 

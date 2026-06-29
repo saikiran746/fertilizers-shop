@@ -4,11 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { fetchProducts } from "../../api/products";
+import api, { SERVER_URL } from "../../api";
 import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
-
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
-
 /* ── tiny reusable components ───────────────────────────── */
 function InputLabel({ children }) {
   return (

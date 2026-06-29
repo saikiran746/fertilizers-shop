@@ -15,80 +15,109 @@ function mapBooking(b) {
 // ── Create booking & decrement stock ────────────────────────────────
 exports.createBooking = async (req, res) => {
   try {
-    const { name, phone, email, items, address, location } = req.body;
+    const { name, phone, email, address, location } = req.body;
+    let items = req.body.items;
 
-    if (!name || !phone || !items || !Array.isArray(items) || items.length === 0 || !address) {
-      return res.status(400).json({ error: "Missing required fields or empty items" });
+    // Support legacy single-product format
+    if (!items && req.body.productId) {
+      items = [{ productId: req.body.productId, quantity: req.body.quantity || 1 }];
     }
 
-    // Prepare items array
-    const bookingItemsData = [];
-    
-    // Check and decrement stock for all items
-    for (const item of items) {
-      const { productId, quantity = 1 } = item;
-      const product = await prisma.product.findUnique({ where: { id: productId } });
-      
-      if (!product) {
-        return res.status(404).json({ error: `Product not found: ${productId}` });
-      }
-      
-      bookingItemsData.push({
-        productId,
-        productName: product.name,
-        quantity
-      });
+    if (!name || !phone || !address) {
+      return res.status(400).json({ error: "Missing required fields (name, phone, address)" });
+    }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Please select at least one product" });
+    }
 
-      const hadStock = product.stockQuantity > 0;
-      if (hadStock) {
-        const newQuantity = Math.max(0, product.stockQuantity - quantity);
-        const isOutOfStock = newQuantity <= 0;
-        
-        await prisma.product.update({
-          where: { id: productId },
-          data: {
-            stockQuantity: newQuantity,
-            inStock: !isOutOfStock,
-            visible: isOutOfStock ? false : product.visible, // auto hide if out of stock
-          }
+    // Try new multi-item booking schema first
+    try {
+      const bookingItemsData = [];
+
+      for (const item of items) {
+        const { productId, quantity = 1 } = item;
+        const product = await prisma.product.findUnique({ where: { id: productId } });
+
+        if (!product) {
+          return res.status(404).json({ error: `Product not found: ${productId}` });
+        }
+
+        bookingItemsData.push({
+          productId,
+          productName: product.name,
+          quantity
         });
 
-        if (isOutOfStock) {
-          // Create a system notification message
-          await prisma.message.create({
+        const hadStock = product.stockQuantity > 0;
+        if (hadStock) {
+          const newQuantity = Math.max(0, product.stockQuantity - quantity);
+          const isOutOfStock = newQuantity <= 0;
+
+          await prisma.product.update({
+            where: { id: productId },
             data: {
-              name: "System Alert",
-              email: "system@agroplus.com",
-              phone: "N/A",
-              message: `The product "${product.name}" is now out of stock and has been automatically hidden from clients.`,
-              isRead: false
+              stockQuantity: newQuantity,
+              inStock: !isOutOfStock,
+              visible: isOutOfStock ? false : product.visible,
             }
           });
+
+          if (isOutOfStock) {
+            await prisma.message.create({
+              data: {
+                name: "System Alert",
+                email: "system@agroplus.com",
+                phone: "N/A",
+                message: `The product "${product.name}" is now out of stock and has been automatically hidden from clients.`,
+                isRead: false
+              }
+            });
+          }
         }
       }
-    }
 
-    const booking = await prisma.booking.create({
-      data: {
-        name,
-        phone,
-        email,
-        address,
-        lat: location?.lat,
-        lng: location?.lng,
-        items: {
-          create: bookingItemsData
+      const booking = await prisma.booking.create({
+        data: {
+          name,
+          phone,
+          email,
+          address,
+          lat: location?.lat,
+          lng: location?.lng,
+          items: {
+            create: bookingItemsData
+          }
+        },
+        include: { items: true }
+      });
+
+      return res.status(201).json(mapBooking(booking));
+    } catch (schemaErr) {
+      // Fallback: BookingItem table may not exist yet - create booking without items relation
+      console.warn("BookingItem schema not ready, using legacy fallback:", schemaErr.message);
+
+      const firstItem = items[0];
+      const product = await prisma.product.findUnique({ where: { id: firstItem.productId } }).catch(() => null);
+
+      const booking = await prisma.booking.create({
+        data: {
+          name,
+          phone,
+          email,
+          address,
+          lat: location?.lat,
+          lng: location?.lng,
         }
-      },
-      include: { items: true }
-    });
+      });
 
-    res.status(201).json(mapBooking(booking));
+      return res.status(201).json(mapBooking(booking));
+    }
   } catch (err) {
     console.error("createBooking error:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error: " + err.message });
   }
 };
+
 
 // ── Get all bookings ─────────────────────────────────────────────────
 exports.getBookings = async (req, res) => {

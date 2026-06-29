@@ -86,10 +86,22 @@ exports.deleteProduct = async (req, res) => {
       if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
     }
 
+    // Clear references in Booking table to avoid foreign key constraint violations
+    await prisma.booking.updateMany({
+      where: { productId: req.params.id },
+      data: { productId: null }
+    });
+
+    // Delete chat message product references
+    await prisma.chatMessageProduct.deleteMany({
+      where: { productId: req.params.id }
+    });
+
     await prisma.product.delete({ where: { id: req.params.id } });
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    console.error("deleteProduct error:", err);
+    res.status(500).json({ error: "Failed to delete product. It may be referenced by existing records." });
   }
 };
 

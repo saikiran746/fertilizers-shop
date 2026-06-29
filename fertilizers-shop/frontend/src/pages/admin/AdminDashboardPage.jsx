@@ -242,7 +242,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-white truncate text-sm">{b.name} <span className="text-slate-500 font-normal">({b.phone})</span></p>
-                    <p className="text-xs text-emerald-400 truncate mt-0.5">{b.productName}</p>
+                    <p className="text-xs text-emerald-400 truncate mt-0.5" title={b.items?.map(i => `${i.productName} (x${i.quantity})`).join(', ')}>{b.items?.map(i => `${i.productName} (x${i.quantity})`).join(', ') || 'Items...'}</p>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider ${
                       b.status === "pending" ? "bg-amber-500/20 text-amber-400" :

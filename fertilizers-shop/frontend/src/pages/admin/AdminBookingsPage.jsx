@@ -132,7 +132,7 @@ export default function AdminBookingsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0 pr-2">
                     <p className={`text-sm font-semibold truncate ${b.read ? "text-slate-300" : "text-white"}`}>{b.name}</p>
-                    <p className="text-xs text-emerald-400 truncate mt-1">{b.productName}</p>
+                    <p className="text-xs text-emerald-400 truncate mt-1">{b.items?.map(i => `${i.productName} (x${i.quantity})`).join(', ') || 'Items...'}</p>
                     <p className="text-xs text-slate-500 truncate mt-1">{b.phone}</p>
                   </div>
                   <div className="flex flex-col items-end flex-shrink-0">
@@ -167,8 +167,15 @@ export default function AdminBookingsPage() {
                   </div>
 
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 mb-5">
-                    <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">Product Requested</p>
-                    <p className="text-emerald-400 font-medium text-lg">{selected.productName}</p>
+                    <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">Products Requested</p>
+                    <div className="space-y-2">
+                      {selected.items?.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm">
+                          <span className="text-emerald-400 font-medium">{item.productName}</span>
+                          <span className="text-white bg-white/[0.1] px-2 py-0.5 rounded text-xs font-bold">x{item.quantity}</span>
+                        </div>
+                      )) || <p className="text-emerald-400 font-medium text-lg">{selected.productName}</p>}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mb-5">
@@ -204,7 +211,7 @@ export default function AdminBookingsPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <a href={buildWaUrl(selected.phone, `Hi ${selected.name}, regarding your booking for ${selected.productName}...`)} target="_blank" rel="noopener noreferrer"
+                    <a href={buildWaUrl(selected.phone, `Hi ${selected.name}, regarding your booking for ${selected.items?.map(i => i.productName).join(', ') || 'products'}...`)} target="_blank" rel="noopener noreferrer"
                       className="flex-1 text-center py-3 rounded-xl font-semibold text-white text-xs transition-all hover:opacity-90"
                       style={{ background: "linear-gradient(135deg,#25D366,#128C7E)" }}>
                       WhatsApp Customer

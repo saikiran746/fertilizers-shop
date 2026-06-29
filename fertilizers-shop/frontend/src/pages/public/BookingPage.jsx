@@ -40,7 +40,8 @@ export default function BookingPage() {
   const navigate = useNavigate();
   const preselectedId = searchParams.get("product");
 
-  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", productId: preselectedId || "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "" });
+  const [cart, setCart] = useState({});
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [geoLocation, setGeoLocation] = useState(null);
@@ -53,10 +54,25 @@ export default function BookingPage() {
   const products = data?.products || [];
 
   useEffect(() => {
-    if (preselectedId) setForm((f) => ({ ...f, productId: preselectedId }));
+    if (preselectedId) setCart({ [preselectedId]: 1 });
   }, [preselectedId]);
 
-  const selectedProduct = products.find((p) => p._id === form.productId);
+  const updateCart = (productId, delta) => {
+    setCart(prev => {
+      const newQty = (prev[productId] || 0) + delta;
+      if (newQty <= 0) {
+        const copy = { ...prev };
+        delete copy[productId];
+        return copy;
+      }
+      return { ...prev, [productId]: newQty };
+    });
+  };
+
+  const selectedItems = Object.entries(cart).map(([productId, quantity]) => {
+    const p = products.find(prod => prod._id === productId);
+    return p ? { ...p, quantity } : null;
+  }).filter(Boolean);
 
   /* ── reverse geocoding ── */
   const handleGetLocation = () => {
@@ -100,14 +116,18 @@ export default function BookingPage() {
   /* ── submit ── */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.phone || !form.productId || !form.address)
+    const items = Object.entries(cart).map(([productId, quantity]) => ({ productId, quantity }));
+    if (!form.name || !form.phone || !form.address)
       return toast.error("Please fill all required fields");
+    if (items.length === 0)
+      return toast.error("Please select at least one product");
+
     setLoading(true);
     try {
       const res = await fetch(`${SERVER_URL}/api/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, location: geoLocation }),
+        body: JSON.stringify({ ...form, items, location: geoLocation }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed");
@@ -150,7 +170,7 @@ export default function BookingPage() {
               Thank you, <strong className="text-gray-800">{form.name}</strong>!
             </p>
             <p className="text-gray-400 text-sm mb-7">
-              Your order for <strong className="text-emerald-600">{selectedProduct?.name}</strong> is received.
+              Your order for <strong className="text-emerald-600">{selectedItems.length} product(s)</strong> is received.
               We'll call you on <strong className="text-gray-700">{form.phone}</strong> shortly.
             </p>
             <div className="flex gap-3">
@@ -161,7 +181,7 @@ export default function BookingPage() {
                 Browse More
               </button>
               <button
-                onClick={() => { setSuccess(false); setForm({ name: "", phone: "", email: "", address: "", productId: "" }); setGeoLocation(null); }}
+                onClick={() => { setSuccess(false); setForm({ name: "", phone: "", email: "", address: "" }); setCart({}); setGeoLocation(null); }}
                 className="flex-1 py-3 rounded-xl text-white text-sm font-bold transition-all"
                 style={{ background: "linear-gradient(135deg,#34d399,#059669)" }}
               >
@@ -212,22 +232,29 @@ export default function BookingPage() {
               </p>
             </div>
 
-            {selectedProduct && (
+            {selectedItems.length > 0 && (
               <motion.div
-                className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-3 flex-shrink-0"
+                className="flex flex-col gap-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-3 flex-shrink-0"
                 initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                {selectedProduct.image ? (
-                  <img src={`${SERVER_URL}${selectedProduct.image}`} alt={selectedProduct.name}
-                    className="w-10 h-10 rounded-lg object-cover border border-white/30" />
-                ) : (
-                  <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center text-xl">🌿</div>
+                {selectedItems.slice(0, 2).map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    {item.image ? (
+                      <img src={`${SERVER_URL}${item.image}`} alt={item.name}
+                        className="w-8 h-8 rounded-lg object-cover border border-white/30" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-xl">🌿</div>
+                    )}
+                    <div>
+                      <p className="text-white font-bold text-sm leading-tight truncate max-w-[120px]">{item.name}</p>
+                      <p className="text-emerald-200 text-xs font-semibold">x{item.quantity}</p>
+                    </div>
+                  </div>
+                ))}
+                {selectedItems.length > 2 && (
+                  <p className="text-white text-xs font-semibold text-center mt-1">+{selectedItems.length - 2} more</p>
                 )}
-                <div>
-                  <p className="text-white font-bold text-sm leading-tight">{selectedProduct.name}</p>
-                  <p className="text-emerald-200 text-xs">{selectedProduct.category}</p>
-                </div>
               </motion.div>
             )}
           </motion.div>
@@ -263,30 +290,37 @@ export default function BookingPage() {
                 <h2 className="text-lg font-heading font-extrabold text-white mb-0.5">Select Product</h2>
                 <p className="text-emerald-300/70 text-xs mb-4">Choose what you want to order</p>
 
-                {/* Selected pill */}
-                <AnimatePresence mode="wait">
-                  {selectedProduct ? (
-                    <motion.div
-                      key={selectedProduct._id}
-                      className="flex items-center gap-3 mb-4 p-3 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm"
-                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                    >
-                      {selectedProduct.image ? (
-                        <img src={`${SERVER_URL}${selectedProduct.image}`} alt={selectedProduct.name}
-                          className="w-12 h-12 rounded-lg object-cover border-2 border-white/25 flex-shrink-0" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-white/15 flex items-center justify-center text-2xl flex-shrink-0">🌿</div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-white font-bold text-sm leading-tight truncate">{selectedProduct.name}</p>
-                        <p className="text-emerald-300 text-xs mt-0.5">{selectedProduct.category}</p>
-                      </div>
-                      <div className="ml-auto flex-shrink-0 w-6 h-6 rounded-full bg-emerald-400 flex items-center justify-center">
-                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    </motion.div>
+                {/* Selected pills */}
+                <AnimatePresence mode="popLayout">
+                  {selectedItems.length > 0 ? (
+                    <div className="flex flex-col gap-2 mb-4">
+                      {selectedItems.map((item) => (
+                        <motion.div
+                          key={item._id}
+                          className="flex items-center gap-3 p-2 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm"
+                          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                          layout
+                        >
+                          {item.image ? (
+                            <img src={`${SERVER_URL}${item.image}`} alt={item.name}
+                              className="w-10 h-10 rounded-lg object-cover border border-white/25 flex-shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center text-xl flex-shrink-0">🌿</div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-white font-bold text-sm leading-tight truncate">{item.name}</p>
+                            <p className="text-emerald-300 text-xs mt-0.5">${item.price}</p>
+                          </div>
+                          
+                          {/* Quantity Controls */}
+                          <div className="flex items-center bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
+                            <button onClick={() => updateCart(item._id, -1)} className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 transition-colors">-</button>
+                            <span className="w-8 text-center text-sm font-bold text-white">{item.quantity}</span>
+                            <button onClick={() => updateCart(item._id, 1)} className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 transition-colors">+</button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
                   ) : (
                     <div className="mb-4 p-3 rounded-xl border-2 border-dashed border-white/20 text-center">
                       <p className="text-emerald-300/60 text-xs">No product selected</p>
@@ -305,12 +339,14 @@ export default function BookingPage() {
                       <p className="text-emerald-300/50 text-xs">Loading...</p>
                     </div>
                   ) : products.map((p, i) => {
-                    const active = form.productId === p._id;
+                    const active = !!cart[p._id];
                     return (
                       <motion.button
                         key={p._id}
                         type="button"
-                        onClick={() => setForm((f) => ({ ...f, productId: p._id }))}
+                        onClick={() => {
+                          if (!active) updateCart(p._id, 1);
+                        }}
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.04 }}
@@ -319,7 +355,7 @@ export default function BookingPage() {
                             ? "bg-white/20 border-white/40 shadow-lg"
                             : "bg-white/5 border-transparent hover:bg-white/10 hover:border-white/15"
                         }`}
-                        style={active ? { transform: "translateX(3px)" } : {}}
+                        style={active ? { transform: "translateX(3px)", cursor: "default" } : {}}
                       >
                         {p.image ? (
                           <img src={`${SERVER_URL}${p.image}`} alt={p.name}

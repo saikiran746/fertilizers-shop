@@ -87,7 +87,7 @@ export default function BookingPage() {
           setForm((f) => ({ ...f, address: parts.join(", ") }));
           toast.success("📍 Address auto-filled!");
         } catch {
-          toast.success("📍 GPS saved — please type address.");
+          toast.success("📍 Location is added — please type address.");
         }
         setLocationLoading(false);
       },
@@ -422,7 +422,7 @@ export default function BookingPage() {
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
-                          GPS saved ({geoLocation.lat.toFixed(4)}, {geoLocation.lng.toFixed(4)})
+                          Location is added
                         </motion.p>
                       )}
                     </AnimatePresence>

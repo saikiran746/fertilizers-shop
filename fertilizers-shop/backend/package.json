@@ -4,7 +4,7 @@
   "description": "Backend API for Fertilizers Shop Website",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js",
+    "start": "npx prisma generate && npx prisma db push && node app.js",
     "dev": "nodemon app.js",
     "seed": "node scripts/seedAdmin.js"
   },

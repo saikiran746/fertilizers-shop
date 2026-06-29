@@ -6,7 +6,6 @@ import { adminGetUnreadBadges } from "../../api/settings";
 import { useAuth } from "../../store/AuthContext";
 import Logo from "../ui/Logo";
 import toast from "react-hot-toast";
-import Logo from "../ui/Logo";
 
 const NAV = [
   {

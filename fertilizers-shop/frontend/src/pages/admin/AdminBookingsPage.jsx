@@ -7,6 +7,42 @@ import { buildWaUrl } from "../../utils/whatsapp";
 const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "/api";
 const SERVER_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl.slice(0, -4) : rawBaseUrl;
 
+// ── Build stylish WhatsApp confirmation message ──────────────────────
+function buildConfirmationMessage(booking) {
+  const firstName = booking.name?.split(" ")[0] || booking.name;
+  const productList = booking.items?.length
+    ? booking.items.map(i => `  🌿 ${i.productName}${i.quantity > 1 ? ` (x${i.quantity})` : ""}`).join("\n")
+    : "  🌿 Your selected product(s)";
+
+  return (
+`🌾✨ *AgroPlus Fertilizers* ✨🌾
+━━━━━━━━━━━━━━━━━━━━━━
+🎉 *Booking Confirmed!* 🎉
+━━━━━━━━━━━━━━━━━━━━━━
+
+Dear *${booking.name}* 👋,
+
+We are delighted to inform you that your order has been *officially confirmed* by our team! 🌟
+
+📦 *Products Ordered:*
+${productList}
+
+🚚 *Delivery Details:*
+📍 ${booking.address}
+
+⏳ Our team will reach out to you shortly with the *exact delivery date & time*.
+
+━━━━━━━━━━━━━━━━━━━━━━
+💚 *Thank you for choosing AgroPlus!*
+We are committed to delivering *premium quality* fertilizers right to your doorstep. 🌱
+
+📞 For any queries, feel free to contact us anytime.
+
+🌾 *AgroPlus Fertilizers* — _Nourishing Fields, Growing Futures_ 🌾
+━━━━━━━━━━━━━━━━━━━━━━`
+  );
+}
+
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -53,18 +89,24 @@ export default function AdminBookingsPage() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-
         },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       toast.success(`Booking marked as ${data.status}`);
       qc.invalidateQueries(["admin-bookings"]);
       if (selected && selected._id === data._id) {
         setSelected(data);
+      }
+      // Auto-open WhatsApp with confirmation message when status set to confirmed
+      if (variables.status === "confirmed") {
+        const msg = buildConfirmationMessage(data);
+        const waUrl = buildWaUrl(data.phone, msg);
+        setTimeout(() => window.open(waUrl, "_blank"), 500);
+        toast.success("📱 WhatsApp confirmation opening...", { duration: 4000, icon: "💬" });
       }
     },
     onError: () => toast.error("Failed to update status"),
@@ -211,10 +253,13 @@ export default function AdminBookingsPage() {
                   </div>
 
                   <div className="flex gap-2">
-                    <a href={buildWaUrl(selected.phone, `Hi ${selected.name}, regarding your booking for ${selected.items?.map(i => i.productName).join(', ') || 'products'}...`)} target="_blank" rel="noopener noreferrer"
-                      className="flex-1 text-center py-3 rounded-xl font-semibold text-white text-xs transition-all hover:opacity-90"
-                      style={{ background: "linear-gradient(135deg,#25D366,#128C7E)" }}>
-                      WhatsApp Customer
+                    <a
+                      href={buildWaUrl(selected.phone, buildConfirmationMessage(selected))}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex-1 text-center py-3 rounded-xl font-semibold text-white text-xs transition-all hover:opacity-90 flex items-center justify-center gap-2"
+                      style={{ background: "linear-gradient(135deg,#25D366,#128C7E)" }}
+                    >
+                      💬 WhatsApp Customer
                     </a>
                     <a href={`tel:${selected.phone}`}
                       className="flex-1 text-center py-3 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-xs font-medium">

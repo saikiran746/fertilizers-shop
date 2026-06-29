@@ -36,7 +36,8 @@ model Booking {
   name        String
   phone       String
   email       String?
-  items       BookingItem[]
+  productId   String?
+  itemsJson   String?  // JSON array of {productId, productName, quantity}
   address     String
   lat         Float?
   lng         Float?
@@ -44,16 +45,6 @@ model Booking {
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-}
-
-model BookingItem {
-  id          String   @id @default(cuid())
-  bookingId   String
-  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  productName String
-  quantity    Int      @default(1)
 }
 
 model Message {

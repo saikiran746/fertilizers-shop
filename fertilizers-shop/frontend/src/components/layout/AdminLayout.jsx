@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { adminGetUnreadCount } from "../../api/settings";
+import { adminGetUnreadBadges } from "../../api/settings";
 import { useAuth } from "../../store/AuthContext";
+import Logo from "../ui/Logo";
+import toast from "react-hot-toast";
 import Logo from "../ui/Logo";
 
 const NAV = [
@@ -37,7 +39,7 @@ const NAV = [
   {
     to: "/admin/notifications",
     label: "Notifications",
-    badge: true,
+    badgeKey: "unreadMessages",
     icon: (
       <svg className="w-[22px] h-[22px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -47,6 +49,7 @@ const NAV = [
   {
     to: "/admin/bookings",
     label: "Bookings",
+    badgeKey: "unreadBookings",
     icon: (
       <svg className="w-[22px] h-[22px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -97,12 +100,28 @@ export default function AdminLayout({ children }) {
   // Close mobile drawer on route change
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
-  const { data: unreadData } = useQuery({
-    queryKey: ["admin-unread-count"],
-    queryFn: adminGetUnreadCount,
-    refetchInterval: 30000,
+  const [prevCounts, setPrevCounts] = useState({ unreadMessages: 0, unreadBookings: 0 });
+
+  const { data: badgeData } = useQuery({
+    queryKey: ["admin-unread-badges"],
+    queryFn: adminGetUnreadBadges,
+    refetchInterval: 10000,
   });
-  const unreadCount = unreadData?.count || 0;
+
+  useEffect(() => {
+    if (badgeData) {
+      if (badgeData.unreadMessages > prevCounts.unreadMessages) {
+        toast("You have new notifications!", { icon: "🔔", style: { background: '#1e293b', color: '#fff' } });
+      }
+      if (badgeData.unreadBookings > prevCounts.unreadBookings) {
+        toast("You have new bookings!", { icon: "🛒", style: { background: '#1e293b', color: '#fff' } });
+      }
+      setPrevCounts({
+        unreadMessages: badgeData.unreadMessages,
+        unreadBookings: badgeData.unreadBookings
+      });
+    }
+  }, [badgeData]);
 
   const handleLogout = () => { logout(); navigate("/admin/login"); };
   const initials = (username || "A").charAt(0).toUpperCase();
@@ -140,7 +159,9 @@ export default function AdminLayout({ children }) {
       {/* ── Navigation ── */}
       <nav className={`flex-1 py-4 overflow-y-auto overflow-x-hidden space-y-1 ${isCollapsed ? "px-2" : "px-3"}`}
         style={{ scrollbarWidth: "none" }}>
-        {NAV.map(({ to, icon, label, badge }) => (
+        {NAV.map(({ to, icon, label, badgeKey }) => {
+          const badgeCount = badgeKey && badgeData ? badgeData[badgeKey] : 0;
+          return (
           <NavLink
             key={to}
             to={to}
@@ -180,12 +201,12 @@ export default function AdminLayout({ children }) {
                 )}
 
                 {/* Badge */}
-                {badge && unreadCount > 0 && !isCollapsed && (
+                {badgeKey && badgeCount > 0 && !isCollapsed && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white min-w-[18px] text-center animate-pulse">
-                    {unreadCount > 99 ? "99+" : unreadCount}
+                    {badgeCount > 99 ? "99+" : badgeCount}
                   </span>
                 )}
-                {badge && unreadCount > 0 && isCollapsed && (
+                {badgeKey && badgeCount > 0 && isCollapsed && (
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
                 )}
 
@@ -199,7 +220,7 @@ export default function AdminLayout({ children }) {
               </>
             )}
           </NavLink>
-        ))}
+        )})}
       </nav>
 
       {/* ── User Section ── */}

@@ -125,6 +125,16 @@ exports.getStats = async (req, res) => {
   }
 };
 
+exports.getUnreadBadges = async (req, res) => {
+  try {
+    const unreadMessages = await prisma.message.count({ where: { isRead: false } });
+    const unreadBookings = await prisma.booking.count({ where: { read: false } });
+    res.json({ unreadMessages, unreadBookings });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 exports.getEnhancedStats = async (req, res) => {
   try {
     const total = await prisma.product.count();

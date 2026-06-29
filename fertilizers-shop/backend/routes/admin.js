@@ -3,7 +3,7 @@ const auth = require("../middleware/auth");
 const upload = require("../middleware/upload");
 const {
   getProducts, createProduct, updateProduct, deleteProduct,
-  toggleVisibility, getStats, getEnhancedStats, changePassword,
+  toggleVisibility, getStats, getEnhancedStats, getUnreadBadges, changePassword,
 } = require("../controllers/adminController");
 const { updateSettings, getAdminSettings, testEmailConnection } = require("../controllers/settingsController");
 const {
@@ -18,6 +18,7 @@ router.use(auth);
 // Products
 router.get("/stats", getStats);
 router.get("/enhanced-stats", getEnhancedStats);
+router.get("/unread-badges", getUnreadBadges);
 router.put("/change-password", changePassword);
 router.get("/products", getProducts);
 router.post("/products", upload.single("image"), createProduct);

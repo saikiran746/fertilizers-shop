@@ -13,6 +13,7 @@ export const adminTestEmail = () => api.post("/admin/test-email").then((r) => r.
 // Messages
 export const adminGetMessages = () => api.get("/admin/messages").then((r) => r.data);
 export const adminGetUnreadCount = () => api.get("/admin/messages/unread-count").then((r) => r.data);
+export const adminGetUnreadBadges = () => api.get("/admin/unread-badges").then((r) => r.data);
 export const adminMarkMessageRead = (id) => api.patch(`/admin/messages/${id}/read`).then((r) => r.data);
 export const adminMarkAllRead = () => api.patch("/admin/messages/mark-all-read").then((r) => r.data);
 export const adminDeleteMessage = (id) => api.delete(`/admin/messages/${id}`).then((r) => r.data);

@@ -77,7 +77,8 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await prisma.product.findUnique({ where: { id: req.params.id } });
+    const productId = req.params.id;
+    const product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) return res.status(404).json({ error: "Product not found" });
 
     // Delete image file
@@ -86,17 +87,20 @@ exports.deleteProduct = async (req, res) => {
       if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
     }
 
-    // Remove chatMessageProduct references (has cascade but be explicit)
-    await prisma.chatMessageProduct.deleteMany({ where: { productId: req.params.id } });
+    // Use raw SQL to delete, bypassing all FK constraints safely
+    // 1. Clear any chat message product references
+    await prisma.$executeRawUnsafe(`DELETE FROM "ChatMessageProduct" WHERE "productId" = '${productId}'`);
+    // 2. Null out any booking references (old schema had FK)
+    await prisma.$executeRawUnsafe(`UPDATE "Booking" SET "productId" = NULL WHERE "productId" = '${productId}'`).catch(() => {});
+    // 3. Delete the product
+    await prisma.$executeRawUnsafe(`DELETE FROM "Product" WHERE id = '${productId}'`);
 
-    await prisma.product.delete({ where: { id: req.params.id } });
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
     console.error("deleteProduct error:", err.message);
     res.status(500).json({ error: "Failed to delete: " + err.message });
   }
 };
-
 
 exports.toggleVisibility = async (req, res) => {
   try {

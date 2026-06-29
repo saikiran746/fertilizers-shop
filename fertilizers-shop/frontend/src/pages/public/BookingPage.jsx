@@ -124,10 +124,22 @@ export default function BookingPage() {
 
     setLoading(true);
     try {
+      // Send both old format (productId) and new format (items array)
+      // so it works regardless of which backend version is deployed
+      const firstItem = items[0];
+      const payload = {
+        ...form,
+        // New multi-product format
+        items,
+        // Old single-product format (fallback for older backend)
+        productId: firstItem.productId,
+        quantity: firstItem.quantity,
+        location: geoLocation,
+      };
       const res = await fetch(`${SERVER_URL}/api/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, items, location: geoLocation }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed");
@@ -139,6 +151,7 @@ export default function BookingPage() {
       setLoading(false);
     }
   };
+
 
   /* ══ SUCCESS SCREEN ══════════════════════════════════════ */
   if (success) {

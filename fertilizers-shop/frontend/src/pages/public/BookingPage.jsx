@@ -134,7 +134,7 @@ export default function BookingPage() {
             transition={{ type: "spring", bounce: 0.45, duration: 0.7 }}
           >
             {/* glow ring */}
-            <div className="absolute inset-0 rounded-3xl" style={{ background: "radial-gradient(circle at 50% 0%,rgba(52,211,153,0.12),transparent 60%)" }} />
+            <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{ background: "radial-gradient(circle at 50% 0%,rgba(52,211,153,0.12),transparent 60%)" }} />
             <motion.div
               className="w-20 h-20 mx-auto mb-5 rounded-full flex items-center justify-center shadow-xl"
               style={{ background: "linear-gradient(135deg,#34d399,#059669)" }}

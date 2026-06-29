@@ -464,7 +464,7 @@ export default function BookingPage() {
 
                   {/* Warning if no product */}
                   <AnimatePresence>
-                    {!form.productId && (
+                    {Object.keys(cart).length === 0 && (
                       <motion.div
                         className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl"
                         initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
@@ -478,13 +478,13 @@ export default function BookingPage() {
                   {/* Submit */}
                   <motion.button
                     type="submit"
-                    disabled={loading || !form.productId}
-                    whileHover={!loading && form.productId ? { scale: 1.015, y: -1 } : {}}
-                    whileTap={!loading && form.productId ? { scale: 0.98 } : {}}
+                    disabled={loading || Object.keys(cart).length === 0}
+                    whileHover={!loading && Object.keys(cart).length > 0 ? { scale: 1.015, y: -1 } : {}}
+                    whileTap={!loading && Object.keys(cart).length > 0 ? { scale: 0.98 } : {}}
                     className="w-full py-3.5 rounded-xl text-white font-bold text-base transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5"
                     style={{
                       background: "linear-gradient(135deg,#059669 0%,#047857 50%,#065f46 100%)",
-                      boxShadow: form.productId ? "0 6px 24px rgba(5,150,105,0.35), 0 2px 8px rgba(0,0,0,0.08)" : "none",
+                      boxShadow: Object.keys(cart).length > 0 ? "0 6px 24px rgba(5,150,105,0.35), 0 2px 8px rgba(0,0,0,0.08)" : "none",
                     }}
                   >
                     {loading ? (

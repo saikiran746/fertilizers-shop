@@ -27,7 +27,6 @@ model Product {
   stockQuantity Int                  @default(0)
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
-  bookings      Booking[]
   chatMessages  ChatMessageProduct[]
 }
 

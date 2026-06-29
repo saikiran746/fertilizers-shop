@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "/api";
+const SERVER_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl.slice(0, -4) : rawBaseUrl;
 const PHONE = import.meta.env.VITE_CONTACT_PHONE || "+91-98765-43210";
 
 const CATEGORY_COLORS = {

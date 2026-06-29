@@ -2,7 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "/api";
+const SERVER_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl.slice(0, -4) : rawBaseUrl;
 
 export default function BookingModal({ product, onClose }) {
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "" });

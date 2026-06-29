@@ -6,7 +6,8 @@ import { fetchProduct } from "../../api/products";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
 const PHONE = import.meta.env.VITE_CONTACT_PHONE || "+91-98765-43210";
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "/api";
+const SERVER_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl.slice(0, -4) : rawBaseUrl;
 
 export default function ProductDetailPage() {
   const { id } = useParams();

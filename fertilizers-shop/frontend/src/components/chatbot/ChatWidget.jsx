@@ -9,7 +9,8 @@ import VoiceInput from './VoiceInput';
 import ChatHistory from './ChatHistory';
 
 const generateSessionId = () => 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "/api";
+const SERVER_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl.slice(0, -4) : rawBaseUrl;
 
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);

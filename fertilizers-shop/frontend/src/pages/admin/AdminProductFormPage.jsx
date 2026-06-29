@@ -7,7 +7,8 @@ import toast from "react-hot-toast";
 import { adminFetchProducts, adminCreateProduct, adminUpdateProduct } from "../../api/products";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
+const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || "/api";
+const SERVER_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl.slice(0, -4) : rawBaseUrl;
 
 const CATEGORIES = [
   "Primary Nutrients",

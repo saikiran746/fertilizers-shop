@@ -7,6 +7,20 @@
 require("dotenv").config();
 const prisma = require("../prismaClient");
 
+// ── Category image map (local uploads) ───────────────────────────────────────
+const IMG = {
+  urea:       "/uploads/urea_fertilizer.png",
+  dap:        "/uploads/dap_fertilizer.png",
+  npk:        "/uploads/npk_fertilizer.png",
+  organic:    "/uploads/organic_fertilizer.png",
+  potash:     "/uploads/potash_fertilizer.png",
+  micro:      "/uploads/micronutrients_fertilizer.png",
+  bio:        "/uploads/bio_fertilizer.png",
+  soil:       "/uploads/soil_conditioner.png",
+  growth:     "/uploads/plant_growth_promoter.png",
+  crop:       "/uploads/crop_protection_nutrients.png",
+};
+
 // ── Product Data ─────────────────────────────────────────────────────────────
 const products = [
   // ─── UREA FERTILIZERS ────────────────────────────────────────────────────
@@ -17,7 +31,7 @@ const products = [
     stockQuantity: 500,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&q=80",
+    image: IMG.urea,
     description:
       "High-quality granular urea fertilizer with 46% nitrogen content. Ideal for all field crops, vegetables, and plantation crops. Fast-acting nitrogen source that promotes vigorous vegetative growth and deep green foliage.",
     benefits:
@@ -32,7 +46,7 @@ const products = [
     stockQuantity: 320,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80",
+    image: IMG.urea,
     description:
       "Premium neem-coated urea with controlled nitrogen release. The neem coating inhibits nitrification, reducing nitrogen loss and improving fertilizer use efficiency. Approved by the Government of India under NBS scheme.",
     benefits:
@@ -49,7 +63,7 @@ const products = [
     stockQuantity: 280,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=600&q=80",
+    image: IMG.dap,
     description:
       "Standard DAP fertilizer (18:46:0) widely used across India. Provides both nitrogen and phosphorus in one granular application. Essential for root development and energy transfer in crops. Suitable for kharif and rabi seasons.",
     benefits:
@@ -64,7 +78,7 @@ const products = [
     stockQuantity: 150,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&q=80",
+    image: IMG.dap,
     description:
       "Enriched DAP formulation with zinc-fortified granules for phosphorus and micronutrient co-application. Particularly effective for deficient soils in Maharashtra, Andhra Pradesh, and Telangana. Reduces need for separate zinc sulphate application.",
     benefits:
@@ -81,7 +95,7 @@ const products = [
     stockQuantity: 200,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=600&q=80",
+    image: IMG.npk,
     description:
       "Fully water-soluble balanced NPK complex fertilizer ideal for drip irrigation and foliar spraying. Equal ratio of N, P, and K ensures balanced nutrition for all crop growth stages. Widely used in horticulture and cash crops.",
     benefits:
@@ -96,7 +110,7 @@ const products = [
     stockQuantity: 175,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1566650985596-48800b8aaa41?w=600&q=80",
+    image: IMG.npk,
     description:
       "Sulphur-enriched NPK complex fertilizer with equal nitrogen and phosphorus and 13% sulphur. Particularly effective for oilseed crops like groundnut, mustard, and sunflower. Sulphur improves oil content and protein quality.",
     benefits:
@@ -111,7 +125,7 @@ const products = [
     stockQuantity: 140,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=600&q=80",
+    image: IMG.npk,
     description:
       "High phosphorus and potassium NPK fertilizer for reproductive stage nutrition. Ideal for use during flowering, fruiting, and grain-filling stages of all crops. Promotes early maturity and better grain weight.",
     benefits:
@@ -126,7 +140,7 @@ const products = [
     stockQuantity: 190,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1592419044706-39796d40f98c?w=600&q=80",
+    image: IMG.npk,
     description:
       "Complex NP-dominant fertilizer for crops requiring high phosphorus at establishment. Ideal as starter fertilizer for transplanted vegetables, sugarcane, and fruit crops. Provides rapid establishment and early crop vigour.",
     benefits:
@@ -143,7 +157,7 @@ const products = [
     stockQuantity: 260,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&q=80",
+    image: IMG.potash,
     description:
       "Standard Muriate of Potash (0:0:60) fertilizer providing 60% potassium content. The most economical potassium source for Indian agriculture. Improves crop quality, shelf life, disease resistance, and water use efficiency.",
     benefits:
@@ -158,7 +172,7 @@ const products = [
     stockQuantity: 120,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&q=80",
+    image: IMG.potash,
     description:
       "Premium Sulphate of Potash (0:0:50 + 17%S) – chloride-free potassium fertilizer ideal for chloride-sensitive crops. Simultaneously provides potassium and sulphur nutrition. Widely used in potato, tobacco, grapes, and high-value vegetables.",
     benefits:
@@ -175,7 +189,7 @@ const products = [
     stockQuantity: 600,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1584824486509-112e4181ff6b?w=600&q=80",
+    image: IMG.organic,
     description:
       "High-quality vermicompost produced from earthworm-processed organic waste. Rich in humic acids, beneficial microorganisms, and plant-available nutrients. Improves soil structure, water retention, and long-term fertility. NPOP certified organic.",
     benefits:
@@ -190,7 +204,7 @@ const products = [
     stockQuantity: 450,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=600&q=80",
+    image: IMG.organic,
     description:
       "Neem cake – the residue after neem oil extraction. Contains azadirachtin which acts as a natural nitrification inhibitor and nematicide. Provides nitrogen (5%), phosphorus (1%), and potassium (1.5%) along with pest-control properties.",
     benefits:
@@ -205,7 +219,7 @@ const products = [
     stockQuantity: 800,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80",
+    image: IMG.organic,
     description:
       "Well-composted and processed farmyard manure (FYM) enriched with beneficial microorganisms. Contains balanced NPK plus secondary nutrients. Ideal soil amendment for all types of soil. Improves water holding capacity and CEC.",
     benefits:
@@ -220,7 +234,7 @@ const products = [
     stockQuantity: 300,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=600&q=80",
+    image: IMG.organic,
     description:
       "Certified organic NPK blend combining vermicompost, neem cake, bone meal, and rock phosphate. Provides complete nutrition for organic farming systems. NPOP and PGS-India certified. Suitable for export-quality produce production.",
     benefits:
@@ -237,7 +251,7 @@ const products = [
     stockQuantity: 350,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600&q=80",
+    image: IMG.micro,
     description:
       "Crystalline zinc sulphate monohydrate with 21% zinc content. Corrects zinc deficiency (khaira disease) in paddy and other crops. Recommended by state agriculture departments for widespread zinc-deficient soils across India.",
     benefits:
@@ -252,7 +266,7 @@ const products = [
     stockQuantity: 200,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1462275646964-a0e3386b89fa?w=600&q=80",
+    image: IMG.micro,
     description:
       "Ferrous sulphate (FeSO₄) with 19% iron content for correction of iron chlorosis (yellowing) in crops grown on calcareous and alkaline soils. Essential for chlorophyll synthesis and enzyme function in plants.",
     benefits:
@@ -267,7 +281,7 @@ const products = [
     stockQuantity: 280,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1603871165848-0aa92c869fa1?w=600&q=80",
+    image: IMG.micro,
     description:
       "Magnesium sulphate (Epsom salt) with 9.8% Mg and 13% sulphur for correcting magnesium and sulphur deficiencies. Essential for chlorophyll formation and enzyme activation. Widely used in coconut, banana, and plantation crops.",
     benefits:
@@ -282,7 +296,7 @@ const products = [
     stockQuantity: 180,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&q=80",
+    image: IMG.micro,
     description:
       "Granular boron fertilizer with 20% boron content for correction of boron deficiency. Critical micronutrient for pollination, cell wall development, and sugar transport. Prevents hollow heart in cauliflower, stem crack in celery, and poor fruit set.",
     benefits:
@@ -299,7 +313,7 @@ const products = [
     stockQuantity: 400,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=600&q=80",
+    image: IMG.bio,
     description:
       "Liquid bio fertilizer containing Azospirillum brasilense – nitrogen-fixing bacteria that colonise plant roots and fix atmospheric nitrogen. Reduces chemical nitrogen requirement by 20–25%. Suitable for wheat, maize, sorghum, cotton, and vegetables.",
     benefits:
@@ -314,7 +328,7 @@ const products = [
     stockQuantity: 380,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=600&q=80",
+    image: IMG.bio,
     description:
       "Liquid Rhizobium culture for symbiotic nitrogen fixation in legume crops. Rhizobium forms nodules in legume roots and fixes atmospheric nitrogen (50–200 kg N per hectare). Specifically formulated for soybean, groundnut, black gram, and green gram.",
     benefits:
@@ -329,7 +343,7 @@ const products = [
     stockQuantity: 360,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=600&q=80",
+    image: IMG.bio,
     description:
       "Liquid PSB culture containing Bacillus megaterium that solubilizes insoluble phosphorus in soil, making it available to plants. Reduces chemical phosphatic fertilizer need by 25%. Works synergistically with Azospirillum and Rhizobium.",
     benefits:
@@ -346,7 +360,7 @@ const products = [
     stockQuantity: 220,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80",
+    image: IMG.soil,
     description:
       "Concentrated humic acid (85% minimum) derived from leonardite for comprehensive soil improvement. Increases CEC, improves soil structure, chelates micronutrients, and stimulates microbial activity. Compatible with all fertilizers and irrigation systems.",
     benefits:
@@ -361,7 +375,7 @@ const products = [
     stockQuantity: 160,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1550159930-40066082a4fc?w=600&q=80",
+    image: IMG.soil,
     description:
       "High-purity fulvic acid (70% minimum) for rapid plant stimulation and nutrient mobility. Smaller molecular size than humic acid allows direct cellular penetration. Enhances nutrient absorption, improves photosynthesis, and strengthens plant immunity.",
     benefits:
@@ -376,7 +390,7 @@ const products = [
     stockQuantity: 250,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1446071103084-c257b5050892?w=600&q=80",
+    image: IMG.soil,
     description:
       "Proprietary blend of gypsum, organic matter, and beneficial microorganisms for comprehensive soil health restoration. Corrects soil compaction, improves drainage, balances soil pH, and introduces beneficial microbes. Ideal for degraded agricultural soils.",
     benefits:
@@ -393,7 +407,7 @@ const products = [
     stockQuantity: 180,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1473186578172-c141e6798cf4?w=600&q=80",
+    image: IMG.growth,
     description:
       "Concentrated seaweed extract (Ascophyllum nodosum) containing natural cytokinins, auxins, gibberellins, betaines, and alginic acid. Improves crop quality, stress tolerance, and yield. Widely used in high-value horticulture and export crops.",
     benefits:
@@ -408,7 +422,7 @@ const products = [
     stockQuantity: 200,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1583209814683-c023dd293cc6?w=600&q=80",
+    image: IMG.growth,
     description:
       "Hydrolysed plant-based amino acid concentrate (40% total amino acids) for rapid plant growth stimulation. Provides ready-to-absorb amino acids that bypass biosynthesis, saving plant energy for growth. Improves yield by 15–25% in field trials.",
     benefits:
@@ -423,7 +437,7 @@ const products = [
     stockQuantity: 240,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80",
+    image: IMG.growth,
     description:
       "Mycorrhiza + Trichoderma + humic acid combination product for enhanced root development and soil colonisation. Mycorrhizal fungi extend root system 10–100 times beyond root hair zone, dramatically improving water and nutrient uptake efficiency.",
     benefits:
@@ -440,7 +454,7 @@ const products = [
     stockQuantity: 220,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=600&q=80",
+    image: IMG.crop,
     description:
       "100% water-soluble calcium nitrate (15.5% N + 19% Ca) for preventing calcium deficiency disorders. Prevents blossom end rot in tomato and pepper, tip burn in lettuce, bitter pit in apple. Provides both available calcium and nitrogen through drip or foliar.",
     benefits:
@@ -455,7 +469,7 @@ const products = [
     stockQuantity: 160,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600&q=80",
+    image: IMG.crop,
     description:
       "Liquid potassium silicate for improving crop physical resistance to diseases and pests. Silicon strengthens cell walls, making them more resistant to fungal penetration and insect feeding. Reduces fungicide and pesticide requirements.",
     benefits:
@@ -470,7 +484,7 @@ const products = [
     stockQuantity: 140,
     inStock: true,
     visible: true,
-    image: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=600&q=80",
+    image: IMG.crop,
     description:
       "EDTA-chelated multi-micronutrient formulation containing zinc, iron, manganese, copper, boron, and molybdenum. Corrects multiple micronutrient deficiencies simultaneously. Fully water-soluble and compatible with most fertilizers and pesticides.",
     benefits:

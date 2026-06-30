@@ -11,12 +11,16 @@ const rawBaseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE
 const SERVER_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl.slice(0, -4) : rawBaseUrl;
 
 const CATEGORIES = [
-  "Primary Nutrients",
+  "Urea Fertilizers",
+  "DAP Fertilizers",
+  "NPK Fertilizers",
   "Organic Fertilizers",
-  "Secondary Nutrients",
-  "Water Soluble Fertilizers",
+  "Potash Fertilizers",
   "Micronutrients",
-  "Bio Fertilizer Products",
+  "Bio Fertilizers",
+  "Soil Conditioners",
+  "Plant Growth Promoters",
+  "Crop Protection Nutrients",
 ];
 
 export default function AdminProductFormPage() {
@@ -25,7 +29,7 @@ export default function AdminProductFormPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [form, setForm] = useState({ name: "", description: "", category: CATEGORIES[0], visible: true, price: 0, benefits: "", inStock: true, stockQuantity: 0 });
+  const [form, setForm] = useState({ name: "", description: "", category: CATEGORIES[0], visible: true, price: 0, benefits: "", usageInstructions: "", inStock: true, stockQuantity: 0 });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -39,7 +43,7 @@ export default function AdminProductFormPage() {
     if (isEdit && products) {
       const product = products.find((p) => p._id === id);
       if (product) {
-        setForm({ name: product.name, description: product.description, category: product.category, visible: product.visible, price: product.price || 0, benefits: product.benefits || "", inStock: product.inStock !== undefined ? product.inStock : true, stockQuantity: product.stockQuantity || 0 });
+        setForm({ name: product.name, description: product.description, category: product.category, visible: product.visible, price: product.price || 0, benefits: product.benefits || "", usageInstructions: product.usageInstructions || "", inStock: product.inStock !== undefined ? product.inStock : true, stockQuantity: product.stockQuantity || 0 });
         if (product.image) setImagePreview(`${SERVER_URL}${product.image}`);
       }
     }
@@ -83,6 +87,7 @@ export default function AdminProductFormPage() {
     fd.append("visible", form.visible);
     fd.append("price", form.price);
     fd.append("benefits", form.benefits);
+    fd.append("usageInstructions", form.usageInstructions);
     fd.append("inStock", form.inStock);
     fd.append("stockQuantity", form.stockQuantity);
     if (imageFile) fd.append("image", imageFile);
@@ -208,6 +213,21 @@ export default function AdminProductFormPage() {
             required
           />
           <p className="text-xs text-slate-600 mt-1.5">{form.description.length}/1000</p>
+        </motion.div>
+
+        {/* Usage Instructions */}
+        <motion.div className="admin-card p-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.17 }}>
+          <label className="admin-label">Usage Instructions</label>
+          <textarea
+            id="admin-product-usage"
+            className="admin-input resize-none"
+            rows={4}
+            placeholder="Describe dosage, application method, timing, and any precautions..."
+            value={form.usageInstructions}
+            onChange={(e) => setForm({ ...form, usageInstructions: e.target.value })}
+            maxLength={1000}
+          />
+          <p className="text-xs text-slate-600 mt-1.5">{form.usageInstructions.length}/1000</p>
         </motion.div>
 
         {/* Visibility */}

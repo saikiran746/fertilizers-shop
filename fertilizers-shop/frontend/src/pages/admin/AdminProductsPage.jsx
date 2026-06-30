@@ -11,12 +11,16 @@ const SERVER_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl.slice(0, -4) : rawBa
 
 const CATEGORIES = [
   "All",
-  "Primary Nutrients",
+  "Urea Fertilizers",
+  "DAP Fertilizers",
+  "NPK Fertilizers",
   "Organic Fertilizers",
-  "Secondary Nutrients",
-  "Water Soluble Fertilizers",
+  "Potash Fertilizers",
   "Micronutrients",
-  "Bio Fertilizer Products",
+  "Bio Fertilizers",
+  "Soil Conditioners",
+  "Plant Growth Promoters",
+  "Crop Protection Nutrients",
 ];
 
 export default function AdminProductsPage() {
@@ -141,6 +145,7 @@ export default function AdminProductsPage() {
                   <tr>
                     <th className="text-left px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider">Product</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider hidden sm:table-cell">Category</th>
+                    <th className="text-left px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider hidden md:table-cell">Price</th>
                     <th className="text-left px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider hidden sm:table-cell">Stock</th>
                     <th className="text-center px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider">Visible</th>
                     <th className="text-right px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wider">Actions</th>
@@ -166,6 +171,11 @@ export default function AdminProductsPage() {
                       </td>
                       <td className="px-5 py-4 hidden sm:table-cell">
                         <span className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.05] text-slate-400 border border-white/[0.06]">{p.category}</span>
+                      </td>
+                      <td className="px-5 py-4 hidden md:table-cell">
+                        <span className="text-xs font-bold text-emerald-400">
+                          {p.price > 0 ? `₹${p.price.toLocaleString("en-IN")}` : "—"}
+                        </span>
                       </td>
                       <td className="px-5 py-4 hidden sm:table-cell">
                         <span className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.05] text-slate-400 border border-white/[0.06]">{p.stockQuantity || 0} unit(s)</span>

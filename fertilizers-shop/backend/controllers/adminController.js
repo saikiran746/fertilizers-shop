@@ -17,7 +17,7 @@ exports.getProducts = async (req, res) => {
 
 exports.createProduct = async (req, res) => {
   try {
-    const { name, description, category, visible, price, benefits, inStock, stockQuantity } = req.body;
+    const { name, description, category, visible, price, benefits, usageInstructions, inStock, stockQuantity } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : null;
     const product = await prisma.product.create({
       data: {
@@ -28,6 +28,7 @@ exports.createProduct = async (req, res) => {
         visible: visible === "false" ? false : true,
         price: price ? Number(price) : 0,
         benefits: benefits || "",
+        usageInstructions: usageInstructions || "",
         inStock: inStock === "false" ? false : true,
         stockQuantity: stockQuantity ? Number(stockQuantity) : 0,
       },
@@ -44,7 +45,7 @@ exports.updateProduct = async (req, res) => {
     let product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) return res.status(404).json({ error: "Product not found" });
 
-    const { name, description, category, visible, price, benefits, inStock, stockQuantity } = req.body;
+    const { name, description, category, visible, price, benefits, usageInstructions, inStock, stockQuantity } = req.body;
     
     let updateData = {};
     if (name) updateData.name = name;
@@ -53,6 +54,7 @@ exports.updateProduct = async (req, res) => {
     if (visible !== undefined) updateData.visible = visible === "false" ? false : true;
     if (price !== undefined) updateData.price = Number(price);
     if (benefits !== undefined) updateData.benefits = benefits;
+    if (usageInstructions !== undefined) updateData.usageInstructions = usageInstructions;
     if (inStock !== undefined) updateData.inStock = inStock === "false" ? false : true;
     if (stockQuantity !== undefined) updateData.stockQuantity = Number(stockQuantity);
 

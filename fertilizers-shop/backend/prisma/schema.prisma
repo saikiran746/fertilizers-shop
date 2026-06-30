@@ -23,6 +23,7 @@ model Product {
   visible       Boolean              @default(true)
   price         Float                @default(0)
   benefits      String               @default("")
+  usageInstructions String           @default("")
   inStock       Boolean              @default(true)
   stockQuantity Int                  @default(0)
   createdAt     DateTime             @default(now())
